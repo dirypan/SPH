@@ -1,0 +1,28 @@
+// SPH2.cpp : 定义控制台应用程序的入口点。
+//
+
+#include "stdafx.h"
+#include<vector>
+#include<iostream>
+ 
+const double height;
+const double width;
+const int N;
+const double h;
+
+
+struct praticle {
+
+};
+struct grid {
+	int position[int(width / (2 * h) + 1)][int(height / (2 * h) + 1)];
+};
+
+void move(vector<grid>&a, double dt)
+int main()
+{
+	vector<grid> net[];
+
+    return 0;
+}
+
