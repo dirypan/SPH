@@ -3,32 +3,67 @@
 
 #include "stdafx.h"
 #include <vector>
-
+#include <stdlib.h>
+#include<math.h>
 
 using namespace std;
 
 const double height=10;
 const double width=10;
-const int N=1000;
-const double h=0.1;
+const int N=100000;
+const double h=0.05;
 const double wid = (width / (2 * h) + 1);
+const double pi = 3.1415926535;
 
 struct particle {
 	double x, y, vx, vy, ax, ay, v;
+	double pressure, density,mass;
 };
 struct grid {						//网格结构
-	particle particle1[101][101];
+	particle particle1[100][100];
 };
 
 /*void move(vector<grid>&a, double dt) {
 
 }  */
+void initiate(vector<grid>&net,int size){
+	for (int i = 0; i < size; i++) {
+		for (int j = 0; j < 100; j++) {
+			for (int k = 0; k < 100; k++) {
+				net[i].particle1[j][k].x = (j + rand() / (RAND_MAX + 1.0)) * 2 * h;
+				net[i].particle1[j][k].y = (k + rand() / (RAND_MAX + 1.0)) * 2 * h;
+				net[i].particle1[j][k].vx = 0;
+				net[i].particle1[j][k].vy = 0;
+			}
+
+		}
+	}
+}
+
+double Spline(double rx, double ry) {		 //样条核函数
+	double a;
+	double s = sqrt(rx*rx + ry*ry) / h;
+	if (s > 2)  a = 0;
+	else	if (s > 1) a = 0.25*pow(2 - s, 3);
+	else  a = 1.5*s*s*(0.5*s - 1);
+	return a * 10 / (7 * pi*h*h);
+}
+
+double intergrate(double * f(double), double a, double b)
+{
+	
+
+
+}
 
 int main()
 {
-	vector <grid> net(2);
-	net[0].particle1[2][3].vx=10;
-	cout << net[0].particle1[2][3].vx;
-    return 0;
+	int N0;//每个网格里的初始粒子数；
+	cin >> N0;
+	int Total;
+	Total = N0 * 100 * 100;
+	vector <grid> net(N0+1);
+	initiate(net, N0);
+	cout << net[9].particle1[20][30].x;
 }
 
