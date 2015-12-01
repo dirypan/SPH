@@ -1,21 +1,23 @@
+// SPH2.cpp : 定义控制台应用程序的入口点。
+//
 
 #include "stdafx.h"
 #include <vector>
+
+
 using namespace std;
+
 const double height=10;
 const double width=10;
 const int N=1000;
 const double h=0.1;
-const int widN = (int)(width / (2 * h) + 1);
-const int heiN = int(height / (2 * h) + 1);
-
-
+const double wid = (width / (2 * h) + 1);
 
 struct particle {
 	double x, y, vx, vy, ax, ay, v;
 };
 struct grid {						//网格结构
-	particle particle1[widN][heiN];
+	particle particle1[101][101];
 };
 
 /*void move(vector<grid>&a, double dt) {
@@ -24,12 +26,9 @@ struct grid {						//网格结构
 
 int main()
 {
-
-	vector<grid> net;
-	net[0].[2][3].vx=10;
-	cout << net[0].[2][3].vx;
+	vector <grid> net(2);
+	net[0].particle1[2][3].vx=10;
+	cout << net[0].particle1[2][3].vx;
     return 0;
 }
-
-
 
