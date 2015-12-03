@@ -23,7 +23,7 @@ struct particle { //粒子结构
     double x, y, vx, vy, v, ax, ay, pressure, density;
 };
 
-double W(double rx, double ry = 0) //样条核函数
+double W(double rx, double ry = 0) //样条核函数，调用的时候直接W(rx, ry)，或者W(r)
 {
     double W;
     double s = sqrt(rx * rx + ry * ry) / h;
@@ -39,6 +39,8 @@ double W(double rx, double ry = 0) //样条核函数
 double intergrate(double* f(double), double a, double b) //通用定积分函数
 {
     double I = 0;
+
+
 
     return I;
 }
