@@ -38,6 +38,8 @@ double W(double rx, double ry = 0) //样条核函数
 
 double intergrate(double (*f)(double), double start, double end, double acc = 1E-6) //通用定积分函数
 {
+    if (start == end)
+        return 0.0;
     double mid = start + (end - start) * rand() / (RAND_MAX + 1.0), mid1 = start + (mid - start) * rand() / (RAND_MAX + 1.0), mid2 = mid + (end - mid) * rand() / (RAND_MAX + 1.0);
     double &x0 = start, &x1 = mid1, &x2 = mid, &x3 = mid2, &x4 = end;
     double y0 = f(x0), y1 = f(x1), y2 = f(x2), y3 = f(x3), y4 = f(x4);
