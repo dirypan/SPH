@@ -5,38 +5,31 @@
 #include <vector>
 #include <stdlib.h>
 #include<math.h>
+#include<iostream>
 
 using namespace std;
 
-const double height=10;
-const double width=10;
-const int N=100000;
-const double h=0.05;
-const double wid = (width / (2 * h) + 1);
+const double height = 10;
+const double width = 10;
+const int N = 100000;
+const double h = 0.05;
+const double m = 0.05;
+const int wid = int(width / (2 * h) + 1);
+const int hei = int(height / (2 * h) + 1);
 const double pi = 3.1415926535;
 
 struct particle {
 	double x, y, vx, vy, ax, ay, v;
-	double pressure, density,mass;
-};
-struct grid {						//网格结构
-	particle particle1[100][100];
+	double pressure, density;
 };
 
 /*void move(vector<grid>&a, double dt) {
 
 }  */
-void initiate(vector<grid>&net,int size){
-	for (int i = 0; i < size; i++) {
-		for (int j = 0; j < 100; j++) {
-			for (int k = 0; k < 100; k++) {
-				net[i].particle1[j][k].x = (j + rand() / (RAND_MAX + 1.0)) * 2 * h;
-				net[i].particle1[j][k].y = (k + rand() / (RAND_MAX + 1.0)) * 2 * h;
-				net[i].particle1[j][k].vx = 0;
-				net[i].particle1[j][k].vy = 0;
-			}
-
-		}
+void initiate(vector<particle>&net, int N) {
+	int n0=N/(hei*wid)
+	for (int i = 0; i < N; i++) {
+		net[i].x=(i/n0)
 	}
 }
 
@@ -51,19 +44,14 @@ double Spline(double rx, double ry) {		 //样条核函数
 
 double intergrate(double * f(double), double a, double b)
 {
-	
+
 
 
 }
 
 int main()
 {
-	int N0;//每个网格里的初始粒子数；
-	cin >> N0;
-	int Total;
-	Total = N0 * 100 * 100;
-	vector <grid> net(N0+1);
-	initiate(net, N0);
-	cout << net[9].particle1[20][30].x;
+	vector<particle> net[N];
+	
 }
 
