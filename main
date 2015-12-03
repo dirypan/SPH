@@ -1,57 +1,98 @@
-// SPH2.cpp : 定义控制台应用程序的入口点。
+// SPH.cpp : 定义控制台应用程序的入口点。
 //
 
-#include "stdafx.h"
+#include <stdafx.h>
+#include <iostream>
 #include <vector>
 #include <stdlib.h>
-#include<math.h>
-#include<iostream>
+#include <cmath>
 
 using namespace std;
 
-const double height = 10;
-const double width = 10;
-const int N = 100000;
+const double Width = 10;
+const double Height = 10;
 const double h = 0.05;
 const double m = 0.05;
-const int wid = int(width / (2 * h) + 1);
-const int hei = int(height / (2 * h) + 1);
-const double pi = 3.1415926535;
+const int Nx = int(Width / (2 * h) + 1); //横向网格个数
+const int Ny = int(Height / (2 * h) + 1); //纵向向网格个数
+const int N0 = 20; //每个网格单元内的粒子数
+const int N = N0 * Nx * Ny; //总粒子数
+const double pi = 3.141592653589793238462643; //圆周率
 
-struct particle {
-	double x, y, vx, vy, ax, ay, v;
-	double pressure, density;
+struct particle { //粒子结构
+    double x, y, vx, vy, v, ax, ay, pressure, density;
 };
 
-/*void move(vector<grid>&a, double dt) {
-
-}  */
-void initiate(vector<particle>&net, int N) {
-	int n0=N/(hei*wid)
-	for (int i = 0; i < N; i++) {
-		net[i].x=(i/n0)
-	}
-}
-
-double Spline(double rx, double ry) {		 //样条核函数
-	double a;
-	double s = sqrt(rx*rx + ry*ry) / h;
-	if (s > 2)  a = 0;
-	else	if (s > 1) a = 0.25*pow(2 - s, 3);
-	else  a = 1.5*s*s*(0.5*s - 1);
-	return a * 10 / (7 * pi*h*h);
-}
-
-double intergrate(double * f(double), double a, double b)
+double W(double rx, double ry = 0) //样条核函数
 {
+    double W;
+    double s = sqrt(rx * rx + ry * ry) / h;
+    if (s > 2)
+        W = 0;
+    else if (W > 1)
+        W = 0.25 * (2 - s) * (2 - s) * (2 - s);
+    else
+        W = 0.75 * s * s * (s - 2);
+    return W * 10 / (7 * pi * h * h);
+}
+
+double intergrate(double* f(double), double a, double b) //通用定积分函数
+{
+    double I = 0;
+
+    return I;
+}
+
+/*
+函数按这样写 边界处理以后再说
+void func(vector<particle> *netin, vector<particle> *netout)
+{
+    for (int nx = 0; nx < Nx; nx++) {
+        for (int ny = 0; ny < Ny; ny++) {
+            for (int x = nx - 1; x <= nx + 1; x++) {
+                for (int y = ny - 1; y <= ny + 1; y++) {
 
 
 
+                }
+            }
+        }
+    }
+}
+
+这样调用
+func(net, net_next);
+
+*/
+
+void initiate(vector<particle> netf[]) //初始化
+{
+    for (int k = 0; k < N0; k++) {
+        for (int i = 0; i < Nx; i++) {
+            for (int j = 0; j < Ny; j++)
+                netf[i + j * Nx][k] = { (i + rand() / (RAND_MAX + 1.0)) * 2 * h, (j + rand() / (RAND_MAX + 1.0)) * 2 * h, 0, 0, 0, 0, 0, 0, 0 };
+        }
+    }
 }
 
 int main()
 {
-	vector<particle> net[N];
-	
-}
+    vector<particle> net1[N], net2[N];
+    vector<particle> *net = net1, *net_next = net2;
+    int which = 0;
+    initiate(net1); //初始化
 
+
+
+
+
+
+
+    if (which == 0)
+        net = net2, net_next = net1;
+    else
+        net = net1, net_next = net2;
+    which = 1 - which;
+
+    return 0;
+}
