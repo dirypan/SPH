@@ -45,9 +45,9 @@ double intergrate(double (*f)(double), double start, double end, double acc = 1E
     double I1 = (x2 - x0) * ((x1 - x2) * (2.0 * x0 - 3.0 * x1 + x2) * y0 + (x2 - x0) * (x2 - x0) * y1 + (x1 - x0) * (x0 - 3.0 * x1 + 2.0 * x2) * y2) / (6.0 * (x1 - x0) * (x2 - x1)); //做左侧随机抛物线拟合
     double I2 = (x4 - x2) * ((x3 - x4) * (2.0 * x2 - 3.0 * x3 + x4) * y2 + (x4 - x2) * (x4 - x2) * y3 + (x3 - x2) * (x2 - 3.0 * x3 + 2.0 * x4) * y4) / (6.0 * (x3 - x2) * (x4 - x3)); //做右侧随机抛物线拟合
     if (abs(I - I1 - I2) <= acc)
-        return I;
+        return I1 + I2;
     else
-        return intergrate(f, start, mid, acc / 2.0) + intergrate(f, mid, end, acc / 2.0);
+        return integrate(f, start, mid, acc * (mid - start) / (end - start)) + integrate(f, mid, end, acc * (end - mid) / (end - start));
 }
 
 /*
