@@ -36,7 +36,19 @@ double W(double rx, double ry = 0) //样条核函数
     return W * 10.0 / (7.0 * pi * h * h);
 }
 
-double intergrate(double (*f)(double), double start, double end, double acc = 1E-6) //通用定积分函数
+double integrate(double (*f)(double), double start, double end, double acc = 1E-6) //通用定积分函数
+{
+    double mid = (start + end) / 2, inth = end - start, fs = f(start), fe = f(end), fm = f(mid);
+    double I = inth * (fs + 4 * fm + fe) / 6;
+    double I1 = inth * (fs + 4 * f((start + mid) / 2) + fm) / 12;
+    double I2 = inth * (fm + 4 * f((mid + end) / 2) + fe) / 12;
+    if (abs(I - I1 - I2) <= acc)
+        return I1 + I2;
+    else
+        return integrate(f, start, mid, acc / 2) + integrate(f, mid, end, acc / 2);
+}
+
+double integrateX(double (*f)(double), double start, double end, double acc = 1E-6) //通用定积分函数
 {
     if (start == end)
         return 0.0;
@@ -49,7 +61,7 @@ double intergrate(double (*f)(double), double start, double end, double acc = 1E
     if (abs(I - I1 - I2) <= acc)
         return I1 + I2;
     else
-        return integrate(f, start, mid, acc * (mid - start) / (end - start)) + integrate(f, mid, end, acc * (end - mid) / (end - start));
+        return integrateX(f, start, mid, acc * (mid - start) / (end - start)) + integrateX(f, mid, end, acc * (end - mid) / (end - start));
 }
 
 /*
