@@ -55,9 +55,9 @@ double integrateX(double (*f)(double), double start, double end, double acc = 1E
     double mid = start + (end - start) * rand() / (RAND_MAX + 1.0), mid1 = start + (mid - start) * rand() / (RAND_MAX + 1.0), mid2 = mid + (end - mid) * rand() / (RAND_MAX + 1.0);
     double &x0 = start, &x1 = mid1, &x2 = mid, &x3 = mid2, &x4 = end;
     double y0 = f(x0), y1 = f(x1), y2 = f(x2), y3 = f(x3), y4 = f(x4);
-    double I = (x4 - x0) * ((x2 - x4) * (2.0 * x0 - 3.0 * x2 + x4) * y0 + (x4 - x0) * (x4 - x0) * y2 + (x2 - x0) * (x0 - 3.0 * x2 + 2.0 * x4) * y4) / (6.0 * (x2 - x0) * (x4 - x2)); //做随机抛物线拟合
-    double I1 = (x2 - x0) * ((x1 - x2) * (2.0 * x0 - 3.0 * x1 + x2) * y0 + (x2 - x0) * (x2 - x0) * y1 + (x1 - x0) * (x0 - 3.0 * x1 + 2.0 * x2) * y2) / (6.0 * (x1 - x0) * (x2 - x1)); //做左侧随机抛物线拟合
-    double I2 = (x4 - x2) * ((x3 - x4) * (2.0 * x2 - 3.0 * x3 + x4) * y2 + (x4 - x2) * (x4 - x2) * y3 + (x3 - x2) * (x2 - 3.0 * x3 + 2.0 * x4) * y4) / (6.0 * (x3 - x2) * (x4 - x3)); //做右侧随机抛物线拟合
+    double I = (x4 - x0) * ((x2 - x4) * (2 * x0 - 3 * x2 + x4) * y0 + (x4 - x0) * (x4 - x0) * y2 + (x2 - x0) * (x0 - 3 * x2 + 2 * x4) * y4) / (6 * (x2 - x0) * (x4 - x2)); //做随机抛物线拟合
+    double I1 = (x2 - x0) * ((x1 - x2) * (2 * x0 - 3 * x1 + x2) * y0 + (x2 - x0) * (x2 - x0) * y1 + (x1 - x0) * (x0 - 3 * x1 + 2 * x2) * y2) / (6 * (x1 - x0) * (x2 - x1)); //做左侧随机抛物线拟合
+    double I2 = (x4 - x2) * ((x3 - x4) * (2 * x2 - 3 * x3 + x4) * y2 + (x4 - x2) * (x4 - x2) * y3 + (x3 - x2) * (x2 - 3 * x3 + 2 * x4) * y4) / (6 * (x3 - x2) * (x4 - x3)); //做右侧随机抛物线拟合
     if (abs(I - I1 - I2) <= acc)
         return I1 + I2;
     else
