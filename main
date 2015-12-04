@@ -64,6 +64,54 @@ double integrateX(double (*f)(double), double start, double end, double acc = 1E
         return integrateX(f, start, mid, acc * (mid - start) / (end - start)) + integrateX(f, mid, end, acc * (end - mid) / (end - start));
 }
 
+double integrate2D(double (*f)(double, double), double xstart, double xend, double ystart, double yend, double acc = 1E-6, char integral = 'a') //通用矩形区域二重积分函数
+{
+    double halfacc = acc / 2;
+    switch (integral) {
+        case 'x': {
+            if (ystart == yend) {
+                double xmid = (xstart + xend) / 2, xinth = xend - xstart, fxs = f(xstart, ystart), fxe = f(xend, ystart), fxm = f(xmid, ystart);
+                double Ix = xinth * (fxs + 4 * fxm + fxe) / 6;
+                double Ix1 = xinth * (fxs + 4 * f((xstart + xmid) / 2, ystart) + fxm) / 12;
+                double Ix2 = xinth * (fxm + 4 * f((xmid + xend) / 2, ystart) + fxe) / 12;
+                if (abs(Ix - Ix1 - Ix2) <= acc)
+                    return Ix1 + Ix2;
+                else
+                    return integrate2D(f, xstart, xmid, ystart, ystart, halfacc, 'x') + integrate2D(f, xmid, xend, ystart, ystart, halfacc, 'x');
+            }
+        } break;
+        case 'y': {
+            if (xstart == xend) {
+                double ymid = (ystart + yend) / 2, yinth = yend - ystart, fys = f(xstart, ystart), fye = f(xstart, yend), fym = f(xstart, ymid);
+                double Iy = yinth * (fys + 4 * fym + fye) / 6;
+                double Iy1 = yinth * (fys + 4 * f(xstart, (ystart + ymid) / 2) + fym) / 12;
+                double Iy2 = yinth * (fym + 4 * f(xstart, (ymid + yend) / 2) + fye) / 12;
+                if (abs(Iy - Iy1 - Iy2) <= acc)
+                    return Iy1 + Iy2;
+                else
+                    return integrate2D(f, xstart, xstart, ystart, ymid, halfacc, 'y') + integrate2D(f, xstart, xstart, ymid, yend, halfacc, 'y');
+            }
+        } break;
+        default: {
+            if (xstart == xend || ystart == yend)
+                return 0.0;
+            double xmid = (xstart + xend) / 2, xinth = xend - xstart;
+            double Ixs = integrate2D(f, xstart, xstart, ystart, yend, halfacc, 'y');
+            double Ixe = integrate2D(f, xend, xend, ystart, yend, halfacc, 'y');
+            double Ixm = integrate2D(f, xmid, xmid, ystart, yend, halfacc, 'y');
+            double I = xinth * (Ixs + 4 * Ixm + Ixe) / 6;
+            double I1 = xinth * (Ixs + 4 * integrate2D(f, (xstart + xmid) / 2, (xstart + xmid) / 2, ystart, yend, halfacc, 'y') + Ixm) / 12;
+            double I2 = xinth * (Ixm + 4 * integrate2D(f, (xmid + xend) / 2, (xmid + xend) / 2, ystart, yend, halfacc, 'y') + Ixe) / 12;
+            if (abs(I - I1 - I2) <= acc)
+                return I1 + I2;
+            else
+                return integrate2D(f, xstart, xmid, ystart, yend, halfacc) + integrate2D(f, xmid, xend, ystart, yend, halfacc);
+            
+        } break;
+    }
+    return 0.0;
+}
+
 /*
 
 函数按这样写 边界处理以后再说
@@ -97,18 +145,24 @@ void initiate(vector<particle> netf[]) //初始化
     }
 }
 
+void erase_net(vector<particle> netf[]) //清空网格中的数据
+{
+    for (int i = 0; i < N; i++)
+        netf[i].~vector();
+}
+
 int main()
 {
     vector<particle> net1[N], net2[N];
     vector<particle> *net = net1, *net_next = net2;
     int which = 0;
-    initiate(net1); //初始化
+    PZLZ(net1); //初始化
 
     if (which == 0)
         net = net2, net_next = net1;
     else
         net = net1, net_next = net2;
+    erase_net(net_next);
     which = 1 - which;
-
     return 0;
 }
