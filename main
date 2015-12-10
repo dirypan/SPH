@@ -158,7 +158,7 @@ double integrate2D(double(*f)(double, double), double xstart, double xend, doubl
 /*
 
 函数按这样写
-void density(vector<particle>* netin, vector<particle>* netout) //密度函数
+void density(vector<particle>* netin, vector<particle>* netout)
 {
 	for (int nx = 1; nx <= Nx; nx++)
 	{
@@ -210,7 +210,7 @@ void density(vector<particle>* netin, vector<particle>* netout) //密度函数
 	}
 }
 
-double pressure(double u, double V)
+double pressure(double u, double V) //压强函数
 {
 	double P_H = c0*c0*(1.0 / m - V) / ((1.0 / m - s / m + s*V) * (1.0 / m - s / m + s*V));
 	double u_H = 0.5*P_H*(1.0 / m - V);
