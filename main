@@ -54,6 +54,11 @@ public:
 	{
 		return vec(k*x, k*y);
 	}
+	
+	vec operator /(double k) //数乘
+	{
+		return vec(x / k, y / k);
+	}
 
 	double operator *(const vec &v) //点乘
 	{
