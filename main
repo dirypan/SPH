@@ -16,9 +16,9 @@ const int N = (Nx + 2)*(Ny + 2); //总网格个数
 const int N0 = 20; //每个网格单元内初态的粒子数
 const double Width = 2.0 * h * (Nx + 1);
 const double Height = 2.0 * h * (Ny + 1);
-const double Gamma = 1.0; //Gruneisen 系数
-const double c0; //声速
-const double s;
+const double Gamma = 0.1; //Gruneisen 系数
+const double c0＝1510.0; //声速
+const double s=1.92;
 const double pi = 3.141592653589793238462643; //圆周率
 
 class vec //矢量类
