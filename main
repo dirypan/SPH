@@ -11,6 +11,9 @@ using namespace std;
 
 const double h = 0.05;
 const double m = 0.05;
+const double c0;
+const double s;
+const double G;
 const int Nx = 200; //横向网格个数
 const int Ny = 200; //纵向网格个数
 const int N0 = 20; //每个网格单元内的粒子数
@@ -143,6 +146,14 @@ void initiate(vector<particle> netf[]) //初始化
                 netf[i + j * Nx][k] = { (i + rand() / (RAND_MAX + 1.0)) * 2 * h, (j + rand() / (RAND_MAX + 1.0)) * 2.0 * h, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
         }
     }
+}
+
+double pressure(double u, double v)
+{
+	double ph = c0*c0*(1.0 / m - v) /( (1.0 / m - s / m + s*v) * (1.0 / m - s / m + s*v));
+	double uh = 0.5*ph*(1 / m - v);
+	double p = ph + G*m*(u - uh);
+	return p;
 }
 
 void erase_net(vector<particle> netf[]) //清空网格中的数据
