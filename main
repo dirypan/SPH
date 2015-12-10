@@ -95,6 +95,39 @@ double W(const vec &r) //样条核函数
 	return W(r.x, r.y);
 }
 
+double W(const vec &r1, const vec &r2) //样条核函数
+{
+	return W(r2.x - r1.x, r2.y - r1.y);
+}
+
+vec GradW(double rx, double ry = 0) //样条核函数梯度
+{
+	double GradW;
+	double s = sqrt(rx * rx + ry * ry) / h;
+	if (s > 2.0)
+		GradW = 0.0;
+	else if (s > 1.0)
+		GradW = -0.5 * (2.0 - s) * (2.0 - s);
+	else
+		GradW = -0.75 * s*(4.0 - 3.0*s);
+	return (GradW * 10.0*s / (7.0 * pi * h * h*h*h))*vec(rx, ry);
+}
+
+vec GradW(const vec &r) //样条核函数梯度
+{
+	return GradW(r.x, r.y);
+}
+
+vec GradW1(const vec &r1, const vec &r2) //样条核函数梯度
+{
+	return GradW(r1.x - r2.x, r1.y - r2.y);
+}
+
+vec GradW2(const vec &r1, const vec &r2) //样条核函数梯度
+{
+	return GradW(r2.x - r1.x, r2.y - r1.y);
+}
+
 double integrate(double(*f)(double), double start, double end, double acc = 1E-6) //通用定积分函数
 {
 	double mid = (start + end) / 2, inth = end - start, fs = f(start), fe = f(end), fm = f(mid);
