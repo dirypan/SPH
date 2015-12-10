@@ -1,136 +1,186 @@
-// SPH.cpp : 定义控制台应用程序的入口点。
+// FluidsX.cpp : 定义控制台应用程序的入口点。
 //
 
-#include <stdafx.h>
-#include <iostream>
-#include <vector>
-#include <stdlib.h>
-#include <cmath>
+#include "stdafx.h"
+#include "iostream"
+#include "vector"
+#include "stdlib.h"
 
 using namespace std;
 
 const double h = 0.05;
 const double m = 0.05;
-const double c0;
-const double s;
-const double G;
 const int Nx = 200; //横向网格个数
 const int Ny = 200; //纵向网格个数
-const int N0 = 20; //每个网格单元内的粒子数
-const int N = N0 * Nx * Ny; //总粒子数
+const int N = (Nx + 2)*(Ny + 2); //总网格个数
+const int N0 = 20; //每个网格单元内初态的粒子数
 const double Width = 2.0 * h * (Nx + 1);
 const double Height = 2.0 * h * (Ny + 1);
+const double Gamma = 1.0; //Gruneisen 系数
+const double c0; //声速
+const double s;
 const double pi = 3.141592653589793238462643; //圆周率
 
-struct particle { //粒子结构
-    double x, y, vx, vy, v, ax, ay, pressure, density;
+class vec //矢量类
+{
+public:
+	double x, y; //分量
+	vec(double X, double Y) //构造函数
+	{
+		x = Y, y = Y;
+	}
+
+	vec(const vec &v) //拷贝构造函数
+	{
+		x = v.x, y = v.y;
+	}
+
+	double mold() //获取模
+	{
+		return sqrt(x*x + y*y);
+	}
+
+	vec operator +(const vec &v) //加法
+	{
+		return vec(x + v.x, y + v.y);
+	}
+
+	vec operator -(const vec &v) //减法
+	{
+		return vec(x - v.x, y - v.y);
+	}
+
+	vec operator *(double k) //数乘
+	{
+		return vec(k*x, k*y);
+	}
+
+	double operator *(const vec &v) //点乘
+	{
+		return x*v.x + y*v.y;
+	}
+
+	bool operator ==(const vec &v) //判断相等
+	{
+		return (x == v.x && y == v.y);
+	}
+};
+
+vec operator *(double k, const vec &r) //数乘
+{
+	return vec(k*r.x, k*r.y);
+}
+
+struct particle //粒子结构
+{
+	vec r, v, a;
+	double pressure, density;
 };
 
 double W(double rx, double ry = 0) //样条核函数
 {
-    double W;
-    double s = sqrt(rx * rx + ry * ry) / h;
-    if (s > 2.0)
-        W = 0.0;
-    else if (W > 1.0)
-        W = 0.25 * (2.0 - s) * (2.0 - s) * (2.0 - s);
-    else
-        W = -0.75 * s * s * (2.0 - s);
-    return W * 10.0 / (7.0 * pi * h * h);
+	double W;
+	double s = sqrt(rx * rx + ry * ry) / h;
+	if (s > 2.0)
+		W = 0.0;
+	else if (s > 1.0)
+		W = 0.25 * (2.0 - s) * (2.0 - s) * (2.0 - s);
+	else
+		W = -0.75 * s * s * (2.0 - s);
+	return W * 10.0 / (7.0 * pi * h * h);
 }
 
-double integrate(double (*f)(double), double start, double end, double acc = 1E-6) //通用定积分函数
+double W(const vec &r) //样条核函数
 {
-    double mid = (start + end) / 2, inth = end - start, fs = f(start), fe = f(end), fm = f(mid);
-    double I = inth * (fs + 4 * fm + fe) / 6;
-    double I1 = inth * (fs + 4 * f((start + mid) / 2) + fm) / 12;
-    double I2 = inth * (fm + 4 * f((mid + end) / 2) + fe) / 12;
-    if (abs(I - I1 - I2) <= acc)
-        return I1 + I2;
-    else
-        return integrate(f, start, mid, acc / 2) + integrate(f, mid, end, acc / 2);
+	return W(r.x, r.y);
 }
 
-double integrateX(double (*f)(double), double start, double end, double acc = 1E-6) //通用定积分函数
+double integrate(double(*f)(double), double start, double end, double acc = 1E-6) //通用定积分函数
 {
-    if (start == end)
-        return 0.0;
-    double mid = start + (end - start) * rand() / (RAND_MAX + 1.0), mid1 = start + (mid - start) * rand() / (RAND_MAX + 1.0), mid2 = mid + (end - mid) * rand() / (RAND_MAX + 1.0);
-    double &x0 = start, &x1 = mid1, &x2 = mid, &x3 = mid2, &x4 = end;
-    double y0 = f(x0), y1 = f(x1), y2 = f(x2), y3 = f(x3), y4 = f(x4);
-    double I = (x4 - x0) * ((x2 - x4) * (2 * x0 - 3 * x2 + x4) * y0 + (x4 - x0) * (x4 - x0) * y2 + (x2 - x0) * (x0 - 3 * x2 + 2 * x4) * y4) / (6 * (x2 - x0) * (x4 - x2)); //做随机抛物线拟合
-    double I1 = (x2 - x0) * ((x1 - x2) * (2 * x0 - 3 * x1 + x2) * y0 + (x2 - x0) * (x2 - x0) * y1 + (x1 - x0) * (x0 - 3 * x1 + 2 * x2) * y2) / (6 * (x1 - x0) * (x2 - x1)); //做左侧随机抛物线拟合
-    double I2 = (x4 - x2) * ((x3 - x4) * (2 * x2 - 3 * x3 + x4) * y2 + (x4 - x2) * (x4 - x2) * y3 + (x3 - x2) * (x2 - 3 * x3 + 2 * x4) * y4) / (6 * (x3 - x2) * (x4 - x3)); //做右侧随机抛物线拟合
-    if (abs(I - I1 - I2) <= acc)
-        return I1 + I2;
-    else
-        return integrateX(f, start, mid, acc * (mid - start) / (end - start)) + integrateX(f, mid, end, acc * (end - mid) / (end - start));
+	double mid = (start + end) / 2, inth = end - start, fs = f(start), fe = f(end), fm = f(mid);
+	double I = inth * (fs + 4 * fm + fe) / 6;
+	double I1 = inth * (fs + 4 * f((start + mid) / 2) + fm) / 12;
+	double I2 = inth * (fm + 4 * f((mid + end) / 2) + fe) / 12;
+	if (abs(I - I1 - I2) <= acc)
+		return I1 + I2;
+	else
+		return integrate(f, start, mid, acc / 2) + integrate(f, mid, end, acc / 2);
 }
 
-double integrate2D(double (*f)(double, double), double xstart, double xend, double ystart, double yend, double acc = 1E-6, char integral = 'a') //通用矩形区域二重积分函数
+double integrate2D(double(*f)(double, double), double xstart, double xend, double ystart, double yend, double acc = 1E-6, char integral = 'a') //通用矩形区域二重积分函数
 {
-    double halfacc = acc / 2;
-    switch (integral) {
-        case 'x': {
-            if (ystart == yend) {
-                double xmid = (xstart + xend) / 2, xinth = xend - xstart, fxs = f(xstart, ystart), fxe = f(xend, ystart), fxm = f(xmid, ystart);
-                double Ix = xinth * (fxs + 4 * fxm + fxe) / 6;
-                double Ix1 = xinth * (fxs + 4 * f((xstart + xmid) / 2, ystart) + fxm) / 12;
-                double Ix2 = xinth * (fxm + 4 * f((xmid + xend) / 2, ystart) + fxe) / 12;
-                if (abs(Ix - Ix1 - Ix2) <= acc)
-                    return Ix1 + Ix2;
-                else
-                    return integrate2D(f, xstart, xmid, ystart, ystart, halfacc, 'x') + integrate2D(f, xmid, xend, ystart, ystart, halfacc, 'x');
-            }
-        } break;
-        case 'y': {
-            if (xstart == xend) {
-                double ymid = (ystart + yend) / 2, yinth = yend - ystart, fys = f(xstart, ystart), fye = f(xstart, yend), fym = f(xstart, ymid);
-                double Iy = yinth * (fys + 4 * fym + fye) / 6;
-                double Iy1 = yinth * (fys + 4 * f(xstart, (ystart + ymid) / 2) + fym) / 12;
-                double Iy2 = yinth * (fym + 4 * f(xstart, (ymid + yend) / 2) + fye) / 12;
-                if (abs(Iy - Iy1 - Iy2) <= acc)
-                    return Iy1 + Iy2;
-                else
-                    return integrate2D(f, xstart, xstart, ystart, ymid, halfacc, 'y') + integrate2D(f, xstart, xstart, ymid, yend, halfacc, 'y');
-            }
-        } break;
-        default: {
-            if (xstart == xend || ystart == yend)
-                return 0.0;
-            double xmid = (xstart + xend) / 2, xinth = xend - xstart;
-            double Ixs = integrate2D(f, xstart, xstart, ystart, yend, halfacc, 'y');
-            double Ixe = integrate2D(f, xend, xend, ystart, yend, halfacc, 'y');
-            double Ixm = integrate2D(f, xmid, xmid, ystart, yend, halfacc, 'y');
-            double I = xinth * (Ixs + 4 * Ixm + Ixe) / 6;
-            double I1 = xinth * (Ixs + 4 * integrate2D(f, (xstart + xmid) / 2, (xstart + xmid) / 2, ystart, yend, halfacc, 'y') + Ixm) / 12;
-            double I2 = xinth * (Ixm + 4 * integrate2D(f, (xmid + xend) / 2, (xmid + xend) / 2, ystart, yend, halfacc, 'y') + Ixe) / 12;
-            if (abs(I - I1 - I2) <= acc)
-                return I1 + I2;
-            else
-                return integrate2D(f, xstart, xmid, ystart, yend, halfacc) + integrate2D(f, xmid, xend, ystart, yend, halfacc);
-            
-        } break;
-    }
-    return 0.0;
+	double halfacc = acc / 2;
+	switch (integral) {
+	case 'x': {
+		if (ystart == yend) {
+			double xmid = (xstart + xend) / 2, xinth = xend - xstart, fxs = f(xstart, ystart), fxe = f(xend, ystart), fxm = f(xmid, ystart);
+			double Ix = xinth * (fxs + 4 * fxm + fxe) / 6;
+			double Ix1 = xinth * (fxs + 4 * f((xstart + xmid) / 2, ystart) + fxm) / 12;
+			double Ix2 = xinth * (fxm + 4 * f((xmid + xend) / 2, ystart) + fxe) / 12;
+			if (abs(Ix - Ix1 - Ix2) <= acc)
+				return Ix1 + Ix2;
+			else
+				return integrate2D(f, xstart, xmid, ystart, ystart, halfacc, 'x') + integrate2D(f, xmid, xend, ystart, ystart, halfacc, 'x');
+		}
+	} break;
+	case 'y': {
+		if (xstart == xend) {
+			double ymid = (ystart + yend) / 2, yinth = yend - ystart, fys = f(xstart, ystart), fye = f(xstart, yend), fym = f(xstart, ymid);
+			double Iy = yinth * (fys + 4 * fym + fye) / 6;
+			double Iy1 = yinth * (fys + 4 * f(xstart, (ystart + ymid) / 2) + fym) / 12;
+			double Iy2 = yinth * (fym + 4 * f(xstart, (ymid + yend) / 2) + fye) / 12;
+			if (abs(Iy - Iy1 - Iy2) <= acc)
+				return Iy1 + Iy2;
+			else
+				return integrate2D(f, xstart, xstart, ystart, ymid, halfacc, 'y') + integrate2D(f, xstart, xstart, ymid, yend, halfacc, 'y');
+		}
+	} break;
+	default: {
+		if (xstart == xend || ystart == yend)
+			return 0.0;
+		double xmid = (xstart + xend) / 2, xinth = xend - xstart;
+		double Ixs = integrate2D(f, xstart, xstart, ystart, yend, halfacc, 'y');
+		double Ixe = integrate2D(f, xend, xend, ystart, yend, halfacc, 'y');
+		double Ixm = integrate2D(f, xmid, xmid, ystart, yend, halfacc, 'y');
+		double I = xinth * (Ixs + 4 * Ixm + Ixe) / 6;
+		double I1 = xinth * (Ixs + 4 * integrate2D(f, (xstart + xmid) / 2, (xstart + xmid) / 2, ystart, yend, halfacc, 'y') + Ixm) / 12;
+		double I2 = xinth * (Ixm + 4 * integrate2D(f, (xmid + xend) / 2, (xmid + xend) / 2, ystart, yend, halfacc, 'y') + Ixe) / 12;
+		if (abs(I - I1 - I2) <= acc)
+			return I1 + I2;
+		else
+			return integrate2D(f, xstart, xmid, ystart, yend, halfacc) + integrate2D(f, xmid, xend, ystart, yend, halfacc);
+
+	} break;
+	}
+	return 0.0;
 }
 
 /*
 
-函数按这样写 边界处理以后再说
-void func(vector<particle>* netin, vector<particle>* netout)
+函数按这样写
+void density(vector<particle>* netin, vector<particle>* netout) //密度函数
 {
-    for (int nx = 0; nx < Nx; nx++) {
-        for (int ny = 0; ny < Ny; ny++) {
-            for (int x = nx - 1; x <= nx + 1; x++) {
-                for (int y = ny - 1; y <= ny + 1; y++) {
+	for (int nx = 1; nx <= Nx; nx++)
+	{
+		for (int ny = 1; ny <= Ny; ny++)
+		{
+			for (int i = 0, double density = 0; i < netin[nx + ny*Nx].size; i++)
+			{
+				for (int x = nx - 1; x <= nx + 1; x++)
+				{
+					for (int y = ny - 1; y <= ny + 1; y++)
+					{
+						for (int j = 0; j < netin[x + y*Nx].size; j++)
+						{
 
 
 
-                }
-            }
-        }
-    }
+						}
+					}
+				}
+			}
+		}
+	}
 }
 
 这样调用
@@ -138,42 +188,56 @@ func(net, net_next);
 
 */
 
-void initiate(vector<particle> netf[]) //初始化
+void density(vector<particle>* netin, vector<particle>* netout) //密度函数
 {
-    for (int k = 0; k < N0; k++) {
-        for (int i = 0; i < Nx; i++) {
-            for (int j = 0; j < Ny; j++)
-                netf[i + j * Nx][k] = { (i + rand() / (RAND_MAX + 1.0)) * 2 * h, (j + rand() / (RAND_MAX + 1.0)) * 2.0 * h, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
-        }
-    }
+	for (int nx = 1; nx <= Nx; nx++)
+	{
+		for (int ny = 1; ny <= Ny; ny++)
+		{
+			for (int i = 0, double density = 0; i < netin[nx + ny*Nx].size; i++)
+			{
+				for (int x = nx - 1; x <= nx + 1; x++)
+				{
+					for (int y = ny - 1; y <= ny + 1; y++)
+					{
+						for (int j = 0; j < netin[x + y*Nx].size; j++)
+							density += W(netin[x + y*Nx][j].r - netin[nx + ny*Nx][i].r);
+					}
+				}
+				netout[nx + ny*Nx][i].density = m*density;
+			}
+		}
+	}
 }
 
-double pressure(double u, double v)
+double pressure(double u, double V)
 {
-	double ph = c0*c0*(1.0 / m - v) /( (1.0 / m - s / m + s*v) * (1.0 / m - s / m + s*v));
-	double uh = 0.5*ph*(1 / m - v);
-	double p = ph + G*m*(u - uh);
-	return p;
+	double P_H = c0*c0*(1.0 / m - V) / ((1.0 / m - s / m + s*V) * (1.0 / m - s / m + s*V));
+	double u_H = 0.5*P_H*(1.0 / m - V);
+	return P_H + Gamma*m*(u - u_H);
 }
 
-void erase_net(vector<particle> netf[]) //清空网格中的数据
+void PZLZ(vector<particle> netf[]) //初始化
 {
-    for (int i = 0; i < N; i++)
-        netf[i].~vector();
+	for (int k = 0; k < N0; k++) {
+		for (int i = 0; i < Nx; i++) {
+			for (int j = 0; j < Ny; j++)
+				netf[i + j * Nx][k] = { vec(i + rand() / (RAND_MAX + 1.0) * 2 * h, (j + rand() / (RAND_MAX + 1.0)) * 2.0 * h), vec(0.0, 0.0), vec(0.0, 0.0), 0.0, 0.0 };
+		}
+	}
 }
 
 int main()
 {
-    vector<particle> net1[N], net2[N];
-    vector<particle> *net = net1, *net_next = net2;
-    int which = 0;
-    PZLZ(net1); //初始化
+	vector<particle> net1[N], net2[N];
+	vector<particle> *net = net1, *net_next = net2;
+	int which = 0;
+	PZLZ(net1); //初始化
 
-    if (which == 0)
-        net = net2, net_next = net1;
-    else
-        net = net1, net_next = net2;
-    erase_net(net_next);
-    which = 1 - which;
-    return 0;
+	if (which == 0)
+		net = net2, net_next = net1;
+	else
+		net = net1, net_next = net2;
+	which = 1 - which;
+	return 0;
 }
