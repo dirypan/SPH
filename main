@@ -3,8 +3,9 @@
 
 #include "stdafx.h"
 #include "iostream"
-#include "vector"
 #include "stdlib.h"
+#include "cmath"
+#include "vector"
 
 using namespace std;
 
@@ -16,9 +17,9 @@ const int N = (Nx + 2)*(Ny + 2); //总网格个数
 const int N0 = 20; //每个网格单元内初态的粒子数
 const double Width = 2.0 * h * (Nx + 1);
 const double Height = 2.0 * h * (Ny + 1);
-const double Gamma = 0.1; //Gruneisen 系数
-const double c0＝1510.0; //声速
-const double s=1.92;
+const double Gamma = 1.0; //Gruneisen 系数
+const double c0; //声速
+const double s;
 const double pi = 3.141592653589793238462643; //圆周率
 
 class vec //矢量类
@@ -42,22 +43,46 @@ public:
 
 	vec operator +(const vec &v) //加法
 	{
-		return vec(x + v.x, y + v.y);
+		return{ x + v.x, y + v.y };
+	}
+
+	vec operator +=(const vec &v) //加法
+	{
+		*this = *this + v;
+		return *this;
 	}
 
 	vec operator -(const vec &v) //减法
 	{
-		return vec(x - v.x, y - v.y);
+		return{ x - v.x, y - v.y };
+	}
+
+	vec operator -=(const vec &v) //减法
+	{
+		*this = *this - v;
+		return *this;
 	}
 
 	vec operator *(double k) //数乘
 	{
-		return vec(k*x, k*y);
+		return{ k*x, k*y };
 	}
-	
+
+	vec operator *=(double k) //数乘
+	{
+		*this = (*this) * k;
+		return *this;
+	}
+
 	vec operator /(double k) //数乘
 	{
-		return vec(x / k, y / k);
+		return{ x / k, y / k };
+	}
+
+	vec operator /=(double k) //数乘
+	{
+		*this = (*this) / k;
+		return *this;
 	}
 
 	double operator *(const vec &v) //点乘
@@ -71,15 +96,20 @@ public:
 	}
 };
 
+vec operator -(const vec &v) //负矢量
+{
+	return{ -v.x, -v.y };
+}
+
 vec operator *(double k, const vec &r) //数乘
 {
-	return vec(k*r.x, k*r.y);
+	return{ k*r.x, k*r.y };
 }
 
 struct particle //粒子结构
 {
 	vec r, v, a;
-	double pressure, density;
+	double u, du_dt, pressure, density;
 };
 
 double W(double rx, double ry = 0) //样条核函数
@@ -202,7 +232,7 @@ void density(vector<particle>* netin, vector<particle>* netout)
 	{
 		for (int ny = 1; ny <= Ny; ny++)
 		{
-			for (int i = 0, double density = 0; i < netin[nx + ny*Nx].size; i++)
+			for (int i = 0; i < netin[nx + ny*Nx].size; i++)
 			{
 				for (int x = nx - 1; x <= nx + 1; x++)
 				{
@@ -226,33 +256,47 @@ func(net, net_next);
 
 */
 
-void density(vector<particle>* netin, vector<particle>* netout) //密度函数
+double pressure(double u, double density) //压强函数
+{
+	double P_H = c0*c0*(1.0 / m - 1.0 / density) / ((1.0 / m - s / m + s / density) * (1.0 / m - s / m + s / density));
+	double u_H = 0.5*P_H*(1.0 / m - 1.0 / density);
+	return P_H + Gamma*m*(u - u_H);
+}
+
+void next(vector<particle>* netin, vector<particle>* netout, double dt) //函数
 {
 	for (int nx = 1; nx <= Nx; nx++)
 	{
 		for (int ny = 1; ny <= Ny; ny++)
 		{
-			for (int i = 0, double density = 0; i < netin[nx + ny*Nx].size; i++)
+			double density = 0.0, du_dt = 0.0;
+			vec a = { 0.0, 0.0 }, Grad = { 0.0, 0.0 };
+			for (int i = 0; i < netin[nx + ny*Nx].size; i++)
 			{
+				a = { 0.0, 0.0 }, Grad = { 0.0, 0.0 }, density = 0.0, du_dt = 0.0;
 				for (int x = nx - 1; x <= nx + 1; x++)
 				{
 					for (int y = ny - 1; y <= ny + 1; y++)
 					{
 						for (int j = 0; j < netin[x + y*Nx].size; j++)
+						{
+							Grad = GradW1(netin[x + y*Nx][i].r, netin[nx + ny*Nx][j].r);
 							density += W(netin[x + y*Nx][j].r - netin[nx + ny*Nx][i].r);
+							du_dt += (netin[x + y*Nx][i].v - netin[nx + ny*Nx][j].v)*Grad;
+							a += Grad;
+						}
 					}
 				}
 				netout[nx + ny*Nx][i].density = m*density;
+				netout[nx + ny*Nx][i].du_dt = m*netin[nx + ny*Nx][i].pressure*du_dt / (netin[nx + ny*Nx][i].density*netin[nx + ny*Nx][i].density);
+				netout[nx + ny*Nx][i].u = netin[nx + ny*Nx][i].u + netout[nx + ny*Nx][i].du_dt*dt;
+				netout[nx + ny*Nx][i].pressure = pressure(netout[nx + ny*Nx][i].u, netout[nx + ny*Nx][i].density);
+				netout[nx + ny*Nx][i].a = -m*netin[nx + ny*Nx][i].pressure*a / (netin[nx + ny*Nx][i].density*netin[nx + ny*Nx][i].density);
+				netout[nx + ny*Nx][i].v = netin[nx + ny*Nx][i].v + netout[nx + ny*Nx][i].a*dt; 
+				netout[nx + ny*Nx][i].r = netin[nx + ny*Nx][i].v + (netin[nx + ny*Nx][i].v + netout[nx + ny*Nx][i].v) *(dt / 2.0);
 			}
 		}
 	}
-}
-
-double pressure(double u, double V) //压强函数
-{
-	double P_H = c0*c0*(1.0 / m - V) / ((1.0 / m - s / m + s*V) * (1.0 / m - s / m + s*V));
-	double u_H = 0.5*P_H*(1.0 / m - V);
-	return P_H + Gamma*m*(u - u_H);
 }
 
 void PZLZ(vector<particle> netf[]) //初始化
@@ -260,7 +304,7 @@ void PZLZ(vector<particle> netf[]) //初始化
 	for (int k = 0; k < N0; k++) {
 		for (int i = 0; i < Nx; i++) {
 			for (int j = 0; j < Ny; j++)
-				netf[i + j * Nx][k] = { vec(i + rand() / (RAND_MAX + 1.0) * 2 * h, (j + rand() / (RAND_MAX + 1.0)) * 2.0 * h), vec(0.0, 0.0), vec(0.0, 0.0), 0.0, 0.0 };
+				netf[i + j * Nx][k] = { { i + rand() / (RAND_MAX + 1.0) * 2 * h, (j + rand() / (RAND_MAX + 1.0)) * 2.0 * h }, { 0.0, 0.0 }, { 0.0, 0.0 }, 0.0, 0.0, 0.0, 0.0 };
 		}
 	}
 }
