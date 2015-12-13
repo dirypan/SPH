@@ -3,6 +3,7 @@
 
 #include "stdafx.h"
 #include "iostream"
+#include "fstream"
 #include "stdlib.h"
 #include "cmath"
 #include "vector"
@@ -11,16 +12,18 @@ using namespace std;
 
 const double h = 0.05;
 const double m = 0.05;
-const int Nx = 200; //横向网格个数
-const int Ny = 200; //纵向网格个数
-const int N = (Nx + 2)*(Ny + 2); //总网格个数
-const int N0 = 20; //每个网格单元内初态的粒子数
+const unsigned int Nx = 200; //横向网格个数
+const unsigned int Ny = 200; //纵向网格个数
+const unsigned int N = (Nx + 2)*(Ny + 2); //总网格个数
+const unsigned int N0 = 20; //每个网格单元内初态的粒子数
 const double Width = 2.0 * h * (Nx + 1);
 const double Height = 2.0 * h * (Ny + 1);
-const double Gamma = 1.0; //Gruneisen 系数
-const double c0; //声速
-const double s;
+const double Gamma = 0.1; //Gruneisen 系数
+const double c0 = 1510.0; //声速
+const double s = 1.9;
 const double pi = 3.141592653589793238462643; //圆周率
+
+fstream finout;
 
 class vec //矢量类
 {
@@ -226,19 +229,19 @@ double integrate2D(double(*f)(double, double), double xstart, double xend, doubl
 /*
 
 函数按这样写
-void density(vector<particle>* netin, vector<particle>* netout)
+void func(vector<particle> netin[], vector<particle> netout[])
 {
 	for (int nx = 1; nx <= Nx; nx++)
 	{
 		for (int ny = 1; ny <= Ny; ny++)
 		{
-			for (int i = 0; i < netin[nx + ny*Nx].size; i++)
+			for (int i = 0; i < netin[nx + ny*Nx].size(); i++)
 			{
 				for (int x = nx - 1; x <= nx + 1; x++)
 				{
 					for (int y = ny - 1; y <= ny + 1; y++)
 					{
-						for (int j = 0; j < netin[x + y*Nx].size; j++)
+						for (int j = 0; j < netin[x + y*Nx].size(); j++)
 						{
 
 
@@ -263,34 +266,36 @@ double pressure(double u, double density) //压强函数
 	return P_H + Gamma*m*(u - u_H);
 }
 
-void next(vector<particle>* netin, vector<particle>* netout, double dt) //函数
+void next(vector<particle> netin[], vector<particle> netout[], double dt) //函数
 {
-	for (int nx = 1; nx <= Nx; nx++)
+	for (unsigned int nx = 1; nx <= Nx; nx++)
 	{
-		for (int ny = 1; ny <= Ny; ny++)
+		for (unsigned int ny = 1; ny <= Ny; ny++)
 		{
 			double density = 0.0, du_dt = 0.0;
 			vec a = { 0.0, 0.0 }, Grad = { 0.0, 0.0 };
-			for (int i = 0; i < netin[nx + ny*Nx].size; i++)
+			unsigned int size = netin[nx + ny*Nx].size();
+			netout[nx + ny*Nx].resize(size);
+			for (unsigned int i = 0; i < size; i++)
 			{
 				a = { 0.0, 0.0 }, Grad = { 0.0, 0.0 }, density = 0.0, du_dt = 0.0;
-				for (int x = nx - 1; x <= nx + 1; x++)
+				for (unsigned int x = nx - 1; x <= nx + 1; x++)
 				{
-					for (int y = ny - 1; y <= ny + 1; y++)
+					for (unsigned int y = ny - 1; y <= ny + 1; y++)
 					{
-						for (int j = 0; j < netin[x + y*Nx].size; j++)
+						for (unsigned int j = 0; j < netin[x + y*Nx].size(); j++)
 						{
-							Grad = GradW1(netin[x + y*Nx][i].r, netin[nx + ny*Nx][j].r);
+							Grad = GradW1(netin[nx + ny*Nx][i].r, netin[x + y*Nx][j].r);
 							density += W(netin[x + y*Nx][j].r - netin[nx + ny*Nx][i].r);
-							du_dt += (netin[x + y*Nx][i].v - netin[nx + ny*Nx][j].v)*Grad;
+							du_dt += (netin[nx + ny*Nx][i].v - netin[x + y*Nx][j].v)*Grad;
 							a += Grad;
 						}
 					}
 				}
 				netout[nx + ny*Nx][i].density = m*density;
 				netout[nx + ny*Nx][i].du_dt = m*netin[nx + ny*Nx][i].pressure*du_dt / (netin[nx + ny*Nx][i].density*netin[nx + ny*Nx][i].density);
-				netout[nx + ny*Nx][i].u = netin[nx + ny*Nx][i].u + netout[nx + ny*Nx][i].du_dt*dt;
 				netout[nx + ny*Nx][i].pressure = pressure(netout[nx + ny*Nx][i].u, netout[nx + ny*Nx][i].density);
+				netout[nx + ny*Nx][i].u = netin[nx + ny*Nx][i].u + netout[nx + ny*Nx][i].du_dt*dt;
 				netout[nx + ny*Nx][i].a = -m*netin[nx + ny*Nx][i].pressure*a / (netin[nx + ny*Nx][i].density*netin[nx + ny*Nx][i].density);
 				netout[nx + ny*Nx][i].v = netin[nx + ny*Nx][i].v + netout[nx + ny*Nx][i].a*dt; 
 				netout[nx + ny*Nx][i].r = netin[nx + ny*Nx][i].v + (netin[nx + ny*Nx][i].v + netout[nx + ny*Nx][i].v) *(dt / 2.0);
@@ -299,27 +304,47 @@ void next(vector<particle>* netin, vector<particle>* netout, double dt) //函数
 	}
 }
 
+void devide(vector<particle> netin[], vector<particle> netout[]) 
+{
+	for (unsigned int i = 0; i <= N;i++)
+		netout[i].clear(); 
+	for (unsigned int nx = 1; nx <= Nx; nx++)
+	{
+		for (unsigned int ny = 1; ny <= Ny; ny++)
+		{
+			for (unsigned int i = 0; i < netin[nx + ny*Nx].size(); i++)
+				netout[int(((netin[nx + ny*Nx][i]).r.x) / (2 * h)) + int(((netin[nx + ny*Nx][i]).r.y) / (2 * h))*Nx].push_back(netin[nx + ny*Nx][i]); 
+		}
+	}
+	for (unsigned int i = 0; i <= N; i++)
+	{
+		for (unsigned int j = 0; j < netout[i].size(); j++)
+			finout << netout[i][j].r.x << netout[i][j].r.y << netout[i][j].v.x << netout[i][j].v.y << endl;
+	}
+}
+
 void PZLZ(vector<particle> netf[]) //初始化
 {
-	for (int k = 0; k < N0; k++) {
-		for (int i = 0; i < Nx; i++) {
-			for (int j = 0; j < Ny; j++)
-				netf[i + j * Nx][k] = { { i + rand() / (RAND_MAX + 1.0) * 2 * h, (j + rand() / (RAND_MAX + 1.0)) * 2.0 * h }, { 0.0, 0.0 }, { 0.0, 0.0 }, 0.0, 0.0, 0.0, 0.0 };
+	for (unsigned int k = 0; k < N0; k++)
+	{
+		for (unsigned int i = 1; i <= Nx; i++)
+		{
+			for (unsigned int j = 1; j <= Ny; j++)
+			{
+				netf[i + j * Nx].push_back({ { i + rand() / (RAND_MAX + 1.0) * 2 * h, (j + rand() / (RAND_MAX + 1.0)) * 2.0 * h },{ 0.0, 0.0 },{ 0.0, 0.0 }, 0.0, 0.0, 0.0, 0.0 });
+			}
 		}
 	}
 }
 
 int main()
 {
+	finout.open("D:\out.txt");
+	finout << "abc" << endl;
 	vector<particle> net1[N], net2[N];
-	vector<particle> *net = net1, *net_next = net2;
 	int which = 0;
 	PZLZ(net1); //初始化
-
-	if (which == 0)
-		net = net2, net_next = net1;
-	else
-		net = net1, net_next = net2;
-	which = 1 - which;
+	next(net1, net2, 0.001);
+	devide(net2, net1);
 	return 0;
 }
