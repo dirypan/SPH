@@ -336,6 +336,44 @@ void PZLZ(vector<particle> netf[]) //初始化
 		}
 	}
 }
+void boundary(vector<particle> netin[]) {
+	for (int j = 0; j <= Nx; j++) {
+		netin[j].clear;
+		for (int k = 0; k < netin[j + Nx + 2].size(); k++) {
+			netin[j].resize(netin[j].size());
+			netin[j][k].v.x = netin[j + Nx + 2][k].v.x;
+			netin[j][k].v.y = -netin[j + Nx + 2][k].v.y;
+			netin[j][k].r.x = netin[j + Nx + 2][k].r.x;
+			netin[j][k].r.y = 4 * h - netin[j + Nx + 2][k].r.y;
+		}
+		netin[j + (Nx + 2)*(Ny + 1)].clear;
+		for (int k = 0; k < netin[j + (Nx + 2)*(Ny)].size(); k++) {
+			netin[j + (Nx + 2)*(Ny + 1)].resize(netin[j + (Nx + 2)*(Ny)].size());
+			netin[j + (Nx + 2)*(Ny + 1)][k].v.x = netin[j - Nx - 2 + (Nx + 2)*(Ny + 1)][k].v.x;
+			netin[j + (Nx + 2)*(Ny + 1)][k].v.y = -netin[j - Nx - 2 + (Nx + 2)*(Ny + 1)][k].v.y;
+			netin[j + (Nx + 2)*(Ny + 1)][k].r.x = netin[j - Nx - 2 + (Nx + 2)*(Ny + 1)][k].r.x;
+			netin[j + (Nx + 2)*(Ny + 1)][k].r.y = (Nx + 1) * 2 * h - netin[j - Nx - 2 + (Nx + 2)*(Ny + 1)][k].r.y;
+		}
+	}
+	for (int j = 0; j <= Ny; j++) {
+		netin[j*(Nx + 2)].clear;
+		for (int k = 0; k < netin[j*(Nx + 2)+1].size; k++) {
+			netin[(Nx + 2)*j].resize(netin[j*(Nx + 2) + 1].size);
+			netin[(Nx + 2)*j][k].r.x = 4 * h - netin[(Nx + 2)*j + 1][k].r.x;
+			netin[(Nx + 2)*j][k].r.y = netin[(Nx + 2)*j + 1][k].r.y;
+			netin[(Ny + 2)*j][k].v.x = -netin[(Nx + 2)*j + 1][k].v.x;
+			netin[(Ny + 2)*j][k].v.y = netin[(Nx + 2)*j + 1][k].v.y;
+		}
+		netin[j*(Nx + 2) + Nx + 1].clear;
+		for (int k = 0; k < netin[k*(Nx + 2) +Nx].size; k++) {
+			netin[j*(Nx + 2) + Nx + 1].resize(netin[j*(Nx + 2) + Nx].size);
+			netin[j*(Nx + 2) + Nx + 1][k].r.x = (Nx+1)* 2*h - netin[j*(Nx + 2) + Nx][k].r.x;
+			netin[j*(Nx + 2) + Nx + 1][k].r.y = netin[j*(Nx + 2) + Nx][k].r.y;
+			netin[j*(Nx + 2) + Nx + 1][k].v.x = -netin[(Nx + 2)*j + Nx][k].v.x;
+			netin[j*(Nx + 2) + Nx + 1][k].v.y = netin[(Nx + 2)*j + Nx][k].v.y;
+	}
+	
+}
 
 int main()
 {
