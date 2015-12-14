@@ -4,6 +4,7 @@
 #include "stdafx.h"
 #include "iostream"
 #include "fstream"
+#include "iomanip"
 #include "stdlib.h"
 #include "time.h"
 #include "cmath"
@@ -11,8 +12,10 @@
 
 using namespace std;
 
+fstream finout;
+
 const double h = 0.05;
-const double m = 0.05;
+const double m = 0.5;
 const unsigned int Nx = 80; //横向网格个数
 const unsigned int Ny = 80; //纵向网格个数
 const unsigned int N_x = Nx + 2;
@@ -26,9 +29,7 @@ const double c0 = 1510.0; //声速
 const double s = 1.9;
 const double pi = 3.141592653589793238462643; //圆周率
 
-const time_t T0 = time(NULL);
-
-fstream finout;
+const time_t t0 = time(NULL);
 
 class vec //矢量类
 {
@@ -237,17 +238,17 @@ double integrate2D(double(*f)(double, double), double xstart, double xend, doubl
 函数按这样写
 void func(vector<particle> netin[], vector<particle> netout[])
 {
-	for (int nx = 1; nx <= Nx; nx++)
+	for (unsigned int nx = 1; nx <= Nx; nx++)
 	{
-		for (int ny = 1; ny <= Ny; ny++)
+		for (unsigned int ny = 1; ny <= Ny; ny++)
 		{
-			for (int i = 0; i < netin[nx + ny*Nx].size(); i++)
+			for (unsigned int i = 0; i < netin[nx + ny*N_x].size(); i++)
 			{
-				for (int x = nx - 1; x <= nx + 1; x++)
+				for (unsigned int x = nx - 1; x <= nx + 1; x++)
 				{
-					for (int y = ny - 1; y <= ny + 1; y++)
+					for (unsigned int y = ny - 1; y <= ny + 1; y++)
 					{
-						for (int j = 0; j < netin[x + y*Nx].size(); j++)
+						for (unsigned int j = 0; j < netin[x + y*N_x].size(); j++)
 						{
 
 
@@ -304,7 +305,7 @@ void next(vector<particle> netin[], vector<particle> netout[], double dt) //函�
 				netout[nx + ny*N_x][i].u = netin[nx + ny*N_x][i].u + netout[nx + ny*N_x][i].du_dt*dt;
 				netout[nx + ny*N_x][i].a = -m*netin[nx + ny*N_x][i].pressure*a / (netin[nx + ny*N_x][i].density*netin[nx + ny*N_x][i].density);
 				netout[nx + ny*N_x][i].v = netin[nx + ny*N_x][i].v + netout[nx + ny*N_x][i].a*dt; 
-				netout[nx + ny*N_x][i].r = netin[nx + ny*N_x][i].v + (netin[nx + ny*N_x][i].v + netout[nx + ny*N_x][i].v) *(dt / 2.0);
+				netout[nx + ny*N_x][i].r = netin[nx + ny*N_x][i].r + (netin[nx + ny*N_x][i].v + netout[nx + ny*N_x][i].v) *(dt / 2.0);
 			}
 		}
 	}
@@ -312,21 +313,21 @@ void next(vector<particle> netin[], vector<particle> netout[], double dt) //函�
 
 void devide(vector<particle> netin[], vector<particle> netout[]) 
 {
-	for (unsigned int i = 0; i <= N;i++)
+	for (unsigned int i = 0; i < N;i++)
 		netout[i].clear(); 
 	for (unsigned int nx = 1; nx <= Nx; nx++)
 	{
 		for (unsigned int ny = 1; ny <= Ny; ny++)
 		{
 			for (unsigned int i = 0; i < netin[nx + ny*N_x].size(); i++)
-				netout[int(((netin[nx + ny*N_x][i]).r.x) / (2 * h)) + int(((netin[nx + ny*N_x][i]).r.y) / (2 * h))*N_x].push_back(netin[nx + ny*N_x][i]); 
+				netout[int((netin[nx + ny*N_x][i].r.x) / (2.0 * h)) + int((netin[nx + ny*N_x][i].r.y) / (2.0 * h))*N_x].push_back(netin[nx + ny*N_x][i]);
 		}
 	}
 }
 
 void boundary(vector<particle> netin[]) //配置虚粒子
 {
-	for (int i = 1; i <= Nx; i++)
+	for (unsigned int i = 1; i <= Nx; i++)
 	{
 		netin[i].resize(netin[i + N_x].size()); 
 		for (unsigned int k = 0; k < netin[i + N_x].size(); k++)
@@ -345,7 +346,7 @@ void boundary(vector<particle> netin[]) //配置虚粒子
 			netin[i + N - N_x][k].r.y = (Nx + 1) * 4 * h - netin[i + N - 2 * N_x][k].r.y;
 		}
 	}
-	for (int j = 0; j <= Ny + 1; j++)
+	for (unsigned int j = 0; j <= Ny + 1; j++)
 	{
 		netin[j*N_x].resize(netin[1 + j*N_x].size()); 
 		for (unsigned int k = 0; k < netin[1 + j*N_x].size(); k++)
@@ -404,28 +405,47 @@ void initialization(vector<particle> netin[]) //初始化
 
 void output(vector<particle> netin[])
 {
+	finout << "##########" << endl;
 	for (unsigned int nx = 1; nx <= Nx; nx++)
 	{
 		for (unsigned int ny = 1; ny <= Ny; ny++)
 		{
+			finout << "netx:" << nx << "  nety:" << ny << "  netsize:" << netin[nx + ny*N_x].size() << endl;
 			for (unsigned int i = 0; i < netin[nx + ny*N_x].size(); i++)
-				finout << netin[nx + ny*N_x][i].r.x << netin[nx + ny*N_x][i].r.y << netin[nx + ny*N_x][i].v.x << netin[nx + ny*N_x][i].v.y << endl;
+			{
+				finout << "     x:" << setw(8) << netin[nx + ny*N_x][i].r.x; 
+				finout << "     y:" << setw(8) << netin[nx + ny*N_x][i].r.y; 
+				finout << "     vx:" << setw(8) << netin[nx + ny*N_x][i].v.x; 
+				finout << "     vy:" << setw(8) << netin[nx + ny*N_x][i].v.y << endl;
+			}
+			finout << endl;
 		}
 	}
+	finout << endl;
 }
 
 int main()
 {
-	finout.open("D\out.txt");
+	finout.open("D:\out.txt", ios_base::out); 
 	vector<particle> net1[N], net2[N];
 	initialization(net1); //初始化
-	for (int z = 0; z <= 8; z++)
+	for (unsigned int f = 0; f < 3; f++)
 	{
-		cout << z << endl;
+		cout << "frame " << f << " : " << time(NULL) - t0 << 's' << endl; 
+		finout << "frame " << f << " : " << time(NULL) - t0 << 's' << endl;
 		output(net1);
 		next(net1, net2, 0.001);
+		cout << "frame " << f << " after next() : " << time(NULL) - t0 << 's' << endl;
+		finout << "frame " << f << " after next() : " << time(NULL) - t0 << 's' << endl;
+		output(net1);
 		devide(net2, net1);
+		cout << "frame " << f << " after devide() : " << time(NULL) - t0 << 's' << endl;
+		finout << "frame " << f << " after devide() : " << time(NULL) - t0 << 's' << endl;
+		output(net1);
 		boundary(net1);
+		cout << "frame " << f << " after boundary() : " << time(NULL) - t0 << 's' << endl;
+		finout << "frame " << f << " after boundary() : " << time(NULL) - t0 << 's' << endl;
+		output(net1);
 	}
 	return 0;
 }
