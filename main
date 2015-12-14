@@ -5,6 +5,7 @@
 #include "iostream"
 #include "fstream"
 #include "stdlib.h"
+#include "time.h"
 #include "cmath"
 #include "vector"
 
@@ -12,16 +13,20 @@ using namespace std;
 
 const double h = 0.05;
 const double m = 0.05;
-const unsigned int Nx = 100; //横向网格个数
-const unsigned int Ny = 100; //纵向网格个数
-const unsigned int N = (Nx + 2)*(Ny + 2); //总网格个数
-const unsigned int N0 = 2; //每个网格单元内初态的粒子数
-const double Width = 2.0 * h * (Nx + 1);
-const double Height = 2.0 * h * (Ny + 1);
+const unsigned int Nx = 80; //横向网格个数
+const unsigned int Ny = 80; //纵向网格个数
+const unsigned int N_x = Nx + 2;
+const unsigned int N_y = Nx + 2;
+const unsigned int N = N_x*N_y; //总网格个数
+const unsigned int N0 = 10; //每个网格单元内初态的粒子数
+const double Width = 2.0 * h * Nx;
+const double Height = 2.0 * h * Ny;
 const double Gamma = 0.1; //Gruneisen 系数
 const double c0 = 1510.0; //声速
 const double s = 1.9;
 const double pi = 3.141592653589793238462643; //圆周率
+
+const time_t T0 = time(NULL);
 
 fstream finout;
 
@@ -30,7 +35,7 @@ class vec //矢量类
 public:
 	double x, y; //分量
 
-	vec(double X = 0, double Y = 0) //构造函数
+	vec(double X = 0.0, double Y = 0.0) //构造函数
 	{
 		x = Y, y = Y;
 	}
@@ -275,8 +280,8 @@ void next(vector<particle> netin[], vector<particle> netout[], double dt) //函�
 		{
 			double density = 0.0, du_dt = 0.0;
 			vec a = { 0.0, 0.0 }, Grad = { 0.0, 0.0 };
-			unsigned int size = netin[nx + ny*Nx].size();
-			netout[nx + ny*Nx].resize(size);
+			unsigned int size = netin[nx + ny*N_x].size(); 
+			netout[nx + ny*N_x].resize(size); 
 			for (unsigned int i = 0; i < size; i++)
 			{
 				a = { 0.0, 0.0 }, Grad = { 0.0, 0.0 }, density = 0.0, du_dt = 0.0;
@@ -284,22 +289,22 @@ void next(vector<particle> netin[], vector<particle> netout[], double dt) //函�
 				{
 					for (unsigned int y = ny - 1; y <= ny + 1; y++)
 					{
-						for (unsigned int j = 0; j < netin[x + y*Nx].size(); j++)
+						for (unsigned int j = 0; j < netin[x + y*N_x].size(); j++)
 						{
-							Grad = GradW1(netin[nx + ny*Nx][i].r, netin[x + y*Nx][j].r);
-							density += W(netin[x + y*Nx][j].r - netin[nx + ny*Nx][i].r);
-							du_dt += (netin[nx + ny*Nx][i].v - netin[x + y*Nx][j].v)*Grad;
+							Grad = GradW1(netin[nx + ny*N_x][i].r, netin[x + y*N_x][j].r);
+							density += W(netin[x + y*N_x][j].r - netin[nx + ny*N_x][i].r);
+							du_dt += (netin[nx + ny*N_x][i].v - netin[x + y*N_x][j].v)*Grad;
 							a += Grad;
 						}
 					}
 				}
-				netout[nx + ny*Nx][i].density = m*density;
-				netout[nx + ny*Nx][i].du_dt = m*netin[nx + ny*Nx][i].pressure*du_dt / (netin[nx + ny*Nx][i].density*netin[nx + ny*Nx][i].density);
-				netout[nx + ny*Nx][i].pressure = pressure(netout[nx + ny*Nx][i].u, netout[nx + ny*Nx][i].density);
-				netout[nx + ny*Nx][i].u = netin[nx + ny*Nx][i].u + netout[nx + ny*Nx][i].du_dt*dt;
-				netout[nx + ny*Nx][i].a = -m*netin[nx + ny*Nx][i].pressure*a / (netin[nx + ny*Nx][i].density*netin[nx + ny*Nx][i].density);
-				netout[nx + ny*Nx][i].v = netin[nx + ny*Nx][i].v + netout[nx + ny*Nx][i].a*dt; 
-				netout[nx + ny*Nx][i].r = netin[nx + ny*Nx][i].v + (netin[nx + ny*Nx][i].v + netout[nx + ny*Nx][i].v) *(dt / 2.0);
+				netout[nx + ny*N_x][i].density = m*density;
+				netout[nx + ny*N_x][i].du_dt = m*netin[nx + ny*N_x][i].pressure*du_dt / (netin[nx + ny*N_x][i].density*netin[nx + ny*N_x][i].density);
+				netout[nx + ny*N_x][i].pressure = pressure(netout[nx + ny*N_x][i].u, netout[nx + ny*N_x][i].density);
+				netout[nx + ny*N_x][i].u = netin[nx + ny*N_x][i].u + netout[nx + ny*N_x][i].du_dt*dt;
+				netout[nx + ny*N_x][i].a = -m*netin[nx + ny*N_x][i].pressure*a / (netin[nx + ny*N_x][i].density*netin[nx + ny*N_x][i].density);
+				netout[nx + ny*N_x][i].v = netin[nx + ny*N_x][i].v + netout[nx + ny*N_x][i].a*dt; 
+				netout[nx + ny*N_x][i].r = netin[nx + ny*N_x][i].v + (netin[nx + ny*N_x][i].v + netout[nx + ny*N_x][i].v) *(dt / 2.0);
 			}
 		}
 	}
@@ -313,96 +318,114 @@ void devide(vector<particle> netin[], vector<particle> netout[])
 	{
 		for (unsigned int ny = 1; ny <= Ny; ny++)
 		{
-			for (unsigned int i = 0; i < netin[nx + ny*Nx].size(); i++)
-				netout[int(((netin[nx + ny*Nx][i]).r.x) / (2 * h)) + int(((netin[nx + ny*Nx][i]).r.y) / (2 * h))*Nx].push_back(netin[nx + ny*Nx][i]); 
+			for (unsigned int i = 0; i < netin[nx + ny*N_x].size(); i++)
+				netout[int(((netin[nx + ny*N_x][i]).r.x) / (2 * h)) + int(((netin[nx + ny*N_x][i]).r.y) / (2 * h))*N_x].push_back(netin[nx + ny*N_x][i]); 
 		}
 	}
 }
 
 void boundary(vector<particle> netin[]) //配置虚粒子
 {
-	for (int j = 1; j <= Nx; j++)
+	for (int i = 1; i <= Nx; i++)
 	{
-		netin[j].resize(netin[j].size());
-		for (int k = 0; k < netin[j + Nx + 2].size(); k++)
+		netin[i].resize(netin[i + N_x].size()); 
+		for (unsigned int k = 0; k < netin[i + N_x].size(); k++)
 		{
-			netin[j][k].v.x = netin[j + Nx + 2][k].v.x;
-			netin[j][k].v.y = -netin[j + Nx + 2][k].v.y;
-			netin[j][k].r.x = netin[j + Nx + 2][k].r.x;
-			netin[j][k].r.y = 4 * h - netin[j + Nx + 2][k].r.y;
+			netin[i][k].v.x = netin[i + N_x][k].v.x;
+			netin[i][k].v.y = -netin[i + N_x][k].v.y;
+			netin[i][k].r.x = netin[i + N_x][k].r.x;
+			netin[i][k].r.y = 4 * h - netin[i + N_x][k].r.y;
 		}
-		netin[j + (Nx + 2)*(Ny + 1)].resize(netin[j + (Nx + 2)*(Ny)].size());
-		for (int k = 0; k < netin[j + (Nx + 2)*(Ny)].size(); k++)
+		netin[i + N - N_x].resize(netin[i + N - 2 * N_x].size()); 
+		for (unsigned int k = 0; k < netin[i + N - 2 * N_x].size(); k++)
 		{
-			netin[j + (Nx + 2)*(Ny + 1)][k].v.x = netin[j - Nx - 2 + (Nx + 2)*(Ny + 1)][k].v.x;
-			netin[j + (Nx + 2)*(Ny + 1)][k].v.y = -netin[j - Nx - 2 + (Nx + 2)*(Ny + 1)][k].v.y;
-			netin[j + (Nx + 2)*(Ny + 1)][k].r.x = netin[j - Nx - 2 + (Nx + 2)*(Ny + 1)][k].r.x;
-			netin[j + (Nx + 2)*(Ny + 1)][k].r.y = (Nx + 1) * 2 * h - netin[j - Nx - 2 + (Nx + 2)*(Ny + 1)][k].r.y;
+			netin[i + N - N_x][k].v.x = netin[i + N - 2 * N_x][k].v.x;
+			netin[i + N - N_x][k].v.y = -netin[i + N - 2 * N_x][k].v.y;
+			netin[i + N - N_x][k].r.x = netin[i + N - 2 * N_x][k].r.x;
+			netin[i + N - N_x][k].r.y = (Nx + 1) * 4 * h - netin[i + N - 2 * N_x][k].r.y;
 		}
 	}
 	for (int j = 0; j <= Ny + 1; j++)
 	{
-		netin[(Nx + 2)*j].resize(netin[j*(Nx + 2) + 1].size);
-		for (int k = 0; k < netin[j*(Nx + 2) + 1].size; k++)
+		netin[j*N_x].resize(netin[1 + j*N_x].size()); 
+		for (unsigned int k = 0; k < netin[1 + j*N_x].size(); k++)
 		{
-			netin[(Nx + 2)*j][k].r.x = 4 * h - netin[(Nx + 2)*j + 1][k].r.x;
-			netin[(Nx + 2)*j][k].r.y = netin[(Nx + 2)*j + 1][k].r.y;
-			netin[(Ny + 2)*j][k].v.x = -netin[(Nx + 2)*j + 1][k].v.x;
-			netin[(Ny + 2)*j][k].v.y = netin[(Nx + 2)*j + 1][k].v.y;
+			netin[j*N_x][k].r.x = 4 * h - netin[1 + j*N_x][k].r.x;
+			netin[j*N_x][k].r.y = netin[1 + j*N_x][k].r.y;
+			netin[j*N_x][k].v.x = -netin[1 + j*N_x][k].v.x;
+			netin[j*N_x][k].v.y = netin[1 + j*N_x][k].v.y; 
 		}
-		netin[j*(Nx + 2) + Nx + 1].resize(netin[j*(Nx + 2) + Nx].size);
-		for (int k = 0; k < netin[k*(Nx + 2) + Nx].size; k++) 
+		netin[Nx + 1 + j*N_x].resize(netin[Nx + j*N_x].size()); 
+		for (unsigned int k = 0; k < netin[Nx + j*N_x].size(); k++)
 		{
-			netin[j*(Nx + 2) + Nx + 1][k].r.x = (Nx + 1) * 2 * h - netin[j*(Nx + 2) + Nx][k].r.x;
-			netin[j*(Nx + 2) + Nx + 1][k].r.y = netin[j*(Nx + 2) + Nx][k].r.y;
-			netin[j*(Nx + 2) + Nx + 1][k].v.x = -netin[(Nx + 2)*j + Nx][k].v.x;
-			netin[j*(Nx + 2) + Nx + 1][k].v.y = netin[(Nx + 2)*j + Nx][k].v.y;
+			netin[Nx + 1 + j*N_x][k].r.x = (Nx + 1) * 4 * h - netin[Nx + j*N_x][k].r.x;
+			netin[Nx + 1 + j*N_x][k].r.y = netin[Nx + j*N_x][k].r.y;
+			netin[Nx + 1 + j*N_x][k].v.x = -netin[Nx + j*N_x][k].v.x;
+			netin[Nx + 1 + j*N_x][k].v.y = netin[Nx + j*N_x][k].v.y;
 		}
 	}
 }
 
-void PZLZ(vector<particle> netin[]) //初始化
+void initialization(vector<particle> netin[]) //初始化
 {
 	for (unsigned int i = 1; i <= Nx; i++)
 	{
 		for (unsigned int j = 1; j <= Ny; j++)
 		{
-			netin[i + j * Nx].clear();
+			netin[i + j*N_x].clear(); 
 			for (unsigned int k = 0; k < N0; k++)
-				netin[i + j * Nx].push_back({ { i + rand() / (RAND_MAX + 1.0) * 2 * h, (j + rand() / (RAND_MAX + 1.0)) * 2.0 * h },{ 0.0, 0.0 },{ 0.0, 0.0 }, 0.0, 0.0, 0.0, 0.0 });
+				netin[i + j*N_x].push_back({ { (i + rand() / (RAND_MAX + 1.0)) * 2 * h, (j + rand() / (RAND_MAX + 1.0)) * 2.0 * h },{ 0.0, 0.0 },{ 0.0, 0.0 }, 0.0, 0.0, 0.0, 0.0 });
 		}
 	}
+	boundary(netin); 
 	for (unsigned int nx = 1; nx <= Nx; nx++)
 	{
 		for (unsigned int ny = 1; ny <= Ny; ny++)
 		{
 			double density = 0.0; 
-			unsigned int size = netin[nx + ny*Nx].size(); 
-			for (unsigned int i = 0; i < size; i++)
+			for (unsigned int i = 0; i < N0; i++)
 			{
 				density = 0.0;
 				for (unsigned int x = nx - 1; x <= nx + 1; x++)
 				{
 					for (unsigned int y = ny - 1; y <= ny + 1; y++)
 					{
-						for (unsigned int j = 0; j < size; j++)
-							density += W(netin[x + y*Nx][j].r - netin[nx + ny*Nx][i].r);
+						for (unsigned int j = 0; j < N0; j++)
+							density += W(netin[x + y*N_x][j].r - netin[nx + ny*N_x][i].r);
 					}
 				}
 				density *= m; 
-				netin[nx + ny*Nx][i].density = density; 
-				netin[nx + ny*Nx][i].pressure = pressure(0.0, density); 
+				netin[nx + ny*N_x][i].density = density; 
+				netin[nx + ny*N_x][i].pressure = pressure(0.0, density); 
 			}
+		}
+	}
+}
+
+void output(vector<particle> netin[])
+{
+	for (unsigned int nx = 1; nx <= Nx; nx++)
+	{
+		for (unsigned int ny = 1; ny <= Ny; ny++)
+		{
+			for (unsigned int i = 0; i < netin[nx + ny*N_x].size(); i++)
+				finout << netin[nx + ny*N_x][i].r.x << netin[nx + ny*N_x][i].r.y << netin[nx + ny*N_x][i].v.x << netin[nx + ny*N_x][i].v.y << endl;
 		}
 	}
 }
 
 int main()
 {
+	finout.open("D\out.txt");
 	vector<particle> net1[N], net2[N];
-	int which = 0;
-	PZLZ(net1); //初始化
-	next(net1, net2, 0.001);
-	devide(net2, net1);
+	initialization(net1); //初始化
+	for (int z = 0; z <= 8; z++)
+	{
+		cout << z << endl;
+		output(net1);
+		next(net1, net2, 0.001);
+		devide(net2, net1);
+		boundary(net1);
+	}
 	return 0;
 }
