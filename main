@@ -38,7 +38,7 @@ public:
 
 	vec(double X = 0.0, double Y = 0.0) //构造函数
 	{
-		x = Y, y = Y;
+		x = X, y = Y;
 	}
 
 	vec(const vec &v) //拷贝构造函数
@@ -121,6 +121,27 @@ struct particle //粒子结构
 	vec r, v, a;
 	double u, du_dt, pressure, density;
 };
+
+void output(vector<particle> netin[])
+{
+	finout << "##########" << endl;
+	for (unsigned int nx = 1; nx <= Nx; nx++)
+	{
+		for (unsigned int ny = 1; ny <= Ny; ny++)
+		{
+			finout << "netx:" << nx << "  nety:" << ny << "  netsize:" << netin[nx + ny*N_x].size() << endl;
+			for (unsigned int i = 0; i < netin[nx + ny*N_x].size(); i++)
+			{
+				finout << "     x:" << setw(8) << netin[nx + ny*N_x][i].r.x;
+				finout << "     y:" << setw(8) << netin[nx + ny*N_x][i].r.y;
+				finout << "     vx:" << setw(8) << netin[nx + ny*N_x][i].v.x;
+				finout << "     vy:" << setw(8) << netin[nx + ny*N_x][i].v.y << endl;
+			}
+			finout << endl;
+		}
+	}
+	finout << endl;
+}
 
 double W(double rx, double ry = 0) //样条核函数
 {
@@ -369,13 +390,13 @@ void boundary(vector<particle> netin[]) //配置虚粒子
 
 void initialization(vector<particle> netin[]) //初始化
 {
-	for (unsigned int i = 1; i <= Nx; i++)
+	for (unsigned int nx = 1; nx <= Nx; nx++)
 	{
-		for (unsigned int j = 1; j <= Ny; j++)
+		for (unsigned int ny = 1; ny <= Ny; ny++)
 		{
-			netin[i + j*N_x].clear(); 
+			netin[nx + ny*N_x].resize(N0); 
 			for (unsigned int k = 0; k < N0; k++)
-				netin[i + j*N_x].push_back({ { (i + rand() / (RAND_MAX + 1.0)) * 2 * h, (j + rand() / (RAND_MAX + 1.0)) * 2.0 * h },{ 0.0, 0.0 },{ 0.0, 0.0 }, 0.0, 0.0, 0.0, 0.0 });
+				netin[nx + ny*N_x][k] = { { (nx + rand() / (RAND_MAX + 1.0)) * 2.0 * h , (ny + rand() / (RAND_MAX + 1.0)) * 2.0 * h } , { 0.0,0.0 }, { 0.0,0.0 }, 0.0, 0.0, 0.0, 0.0 }; 
 		}
 	}
 	boundary(netin); 
@@ -401,27 +422,6 @@ void initialization(vector<particle> netin[]) //初始化
 			}
 		}
 	}
-}
-
-void output(vector<particle> netin[])
-{
-	finout << "##########" << endl;
-	for (unsigned int nx = 1; nx <= Nx; nx++)
-	{
-		for (unsigned int ny = 1; ny <= Ny; ny++)
-		{
-			finout << "netx:" << nx << "  nety:" << ny << "  netsize:" << netin[nx + ny*N_x].size() << endl;
-			for (unsigned int i = 0; i < netin[nx + ny*N_x].size(); i++)
-			{
-				finout << "     x:" << setw(8) << netin[nx + ny*N_x][i].r.x; 
-				finout << "     y:" << setw(8) << netin[nx + ny*N_x][i].r.y; 
-				finout << "     vx:" << setw(8) << netin[nx + ny*N_x][i].v.x; 
-				finout << "     vy:" << setw(8) << netin[nx + ny*N_x][i].v.y << endl;
-			}
-			finout << endl;
-		}
-	}
-	finout << endl;
 }
 
 int main()
