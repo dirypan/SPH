@@ -1,0 +1,82 @@
+#include "stdafx.h"
+
+#include <gl\glut.h>
+#include <iostream>
+
+#define N 4000
+#define width 20
+#define height 20
+#define pointsize 1
+
+using namespace std;
+
+const double Vmax = 160;
+
+void init()
+{
+	glClearColor(1, 0, 0, 0);
+	glShadeModel(GL_FLAT);
+}
+
+void switchColor(double v)
+{
+	double r, g , b;
+	r = (Vmax - v) / Vmax;
+	g = v / Vmax;
+	b = 0;
+	glColor3f(r,g,b);
+}
+
+void display()
+{
+	glClear(GL_COLOR_BUFFER_BIT);
+	glPointSize(pointsize);
+	int i;
+	double x, y,v;
+	glBegin(GL_POINTS);
+	for (i = 1; i <= N ; i++)
+	{
+		cin >> x >> y >> v;
+		switchColor(v);
+		cin.get();
+		glVertex2f(x, y);
+	}
+	glEnd();
+	glFlush();
+}
+
+void reshape(int w, int h)
+{
+	glViewport(0, 0, (GLsizei)w, (GLsizei)h);
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	gluOrtho2D(0, width, 0, height);
+}
+
+void mouse(int button, int state, int x, int y)
+{
+	switch (button)
+	{
+	case GLUT_LEFT_BUTTON:
+		if (state == GLUT_DOWN) 
+			display();
+		break;
+	default:
+		break;
+	}
+}
+
+int main(int argc,char** argv)
+{
+	glutInit(&argc, argv);
+	glutInitDisplayMode(GLUT_RGB | GLUT_SINGLE);
+	glutInitWindowSize(width*10, height*10);
+	glutInitWindowPosition(100, 100);
+	glutCreateWindow(argv[0]);
+	freopen("out.txt", "r", stdin);
+	glutDisplayFunc(display);
+	glutReshapeFunc(reshape);
+	glutMouseFunc(mouse);
+	glutMainLoop();
+    return 0;
+}
