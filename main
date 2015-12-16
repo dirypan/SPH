@@ -27,6 +27,7 @@ const double Height = 2.0 * h * Ny;
 const double Gamma = 0.1; //Gruneisen 系数
 const double c0 = 1510.0; //声速
 const double s = 1.9;
+const double correction_factor = 0.1;
 const double pi = 3.141592653589793238462643; //圆周率
 
 const time_t t0 = time(NULL);
@@ -296,17 +297,18 @@ double pressure(double u, double density) //压强函数
 
 void next(vector<particle> netin[], vector<particle> netout[], double dt) //函数
 {
+	double density = 0.0, du_dt = 0.0;
+	vec a = { 0.0, 0.0 }, Grad = { 0.0, 0.0 }, v_correction = { 0.0,0.0 };
+	unsigned int size;
 	for (unsigned int nx = 1; nx <= Nx; nx++)
 	{
 		for (unsigned int ny = 1; ny <= Ny; ny++)
 		{
-			double density = 0.0, du_dt = 0.0;
-			vec a = { 0.0, 0.0 }, Grad = { 0.0, 0.0 };
-			unsigned int size = netin[nx + ny*N_x].size(); 
+			size = netin[nx + ny*N_x].size(); 
 			netout[nx + ny*N_x].resize(size); 
 			for (unsigned int i = 0; i < size; i++)
 			{
-				a = { 0.0, 0.0 }, Grad = { 0.0, 0.0 }, density = 0.0, du_dt = 0.0;
+				a = { 0.0, 0.0 }, Grad = { 0.0, 0.0 }, v_correction = { 0.0,0.0 }, density = 0.0, du_dt = 0.0; 
 				for (unsigned int x = nx - 1; x <= nx + 1; x++)
 				{
 					for (unsigned int y = ny - 1; y <= ny + 1; y++)
@@ -320,13 +322,23 @@ void next(vector<particle> netin[], vector<particle> netout[], double dt) //函�
 						}
 					}
 				}
-				netout[nx + ny*N_x][i].density = m*density;
+				density *= m;
+				netout[nx + ny*N_x][i].density = density; 
 				netout[nx + ny*N_x][i].du_dt = m*netin[nx + ny*N_x][i].pressure*du_dt / (netin[nx + ny*N_x][i].density*netin[nx + ny*N_x][i].density);
-				netout[nx + ny*N_x][i].pressure = pressure(netout[nx + ny*N_x][i].u, netout[nx + ny*N_x][i].density);
+				netout[nx + ny*N_x][i].pressure = pressure(netout[nx + ny*N_x][i].u, density);
 				netout[nx + ny*N_x][i].u = netin[nx + ny*N_x][i].u + netout[nx + ny*N_x][i].du_dt*dt;
 				netout[nx + ny*N_x][i].a = -m*netin[nx + ny*N_x][i].pressure*a / (netin[nx + ny*N_x][i].density*netin[nx + ny*N_x][i].density);
 				netout[nx + ny*N_x][i].v = netin[nx + ny*N_x][i].v + netout[nx + ny*N_x][i].a*dt; 
-				netout[nx + ny*N_x][i].r = netin[nx + ny*N_x][i].r + (netin[nx + ny*N_x][i].v + netout[nx + ny*N_x][i].v) *(dt / 2.0);
+				for (unsigned int x = nx - 1; x <= nx + 1; x++)
+				{
+					for (unsigned int y = ny - 1; y <= ny + 1; y++)
+					{
+						for (unsigned int j = 0; j < netin[x + y*N_x].size(); j++)
+							v_correction += ((2.0*W(netin[x + y*N_x][j].r - netin[nx + ny*N_x][i].r)) / (netin[nx + ny*N_x][i].density + netin[x + y*N_x][j].density))*(netin[x + y*N_x][j].v - netin[nx + ny*N_x][i].v);
+					}
+				}
+				v_correction *= correction_factor*m;
+				netout[nx + ny*N_x][i].r = netin[nx + ny*N_x][i].r + (netin[nx + ny*N_x][i].v + netout[nx + ny*N_x][i].v + 2.0*v_correction) *(dt / 2.0); 
 			}
 		}
 	}
