@@ -27,7 +27,7 @@ const double Height = 2.0 * h * Ny;
 const double Gamma = 0.1; //Gruneisen 系数
 const double c0 = 1510.0; //声速
 const double s = 1.9;
-const double correction_factor = 0.1;
+const double correction_factor = 0.1; //速度修正系数
 const double pi = 3.141592653589793238462643; //圆周率
 
 const time_t t0 = time(NULL);
