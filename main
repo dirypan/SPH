@@ -297,9 +297,10 @@ double pressure(double u, double density) //压强函数
 
 void next(vector<particle> netin[], vector<particle> netout[], double dt) //函数
 {
-	double density = 0.0, du_dt = 0.0;
-	vec a = { 0.0, 0.0 }, Grad = { 0.0, 0.0 }, v_correction = { 0.0,0.0 };
 	unsigned int size;
+	particle particleini;
+	double density = 0.0, du_dt = 0.0, P_d2;
+	vec a = { 0.0, 0.0 }, P_d2_Grad = { 0.0, 0.0 }, v_correction = { 0.0,0.0 };
 	for (unsigned int nx = 1; nx <= Nx; nx++)
 	{
 		for (unsigned int ny = 1; ny <= Ny; ny++)
@@ -308,37 +309,37 @@ void next(vector<particle> netin[], vector<particle> netout[], double dt) //函�
 			netout[nx + ny*N_x].resize(size); 
 			for (unsigned int i = 0; i < size; i++)
 			{
-				a = { 0.0, 0.0 }, Grad = { 0.0, 0.0 }, v_correction = { 0.0,0.0 }, density = 0.0, du_dt = 0.0; 
+				particleini = netin[nx + ny*N_x][i], a = { 0.0, 0.0 }, P_d2_Grad = { 0.0, 0.0 }, v_correction = { 0.0,0.0 }, density = 0.0, du_dt = 0.0, P_d2 = particleini.pressure / (particleini.density*particleini.density);
 				for (unsigned int x = nx - 1; x <= nx + 1; x++)
 				{
 					for (unsigned int y = ny - 1; y <= ny + 1; y++)
 					{
 						for (unsigned int j = 0; j < netin[x + y*N_x].size(); j++)
 						{
-							Grad = GradW1(netin[nx + ny*N_x][i].r, netin[x + y*N_x][j].r);
-							density += W(netin[x + y*N_x][j].r - netin[nx + ny*N_x][i].r);
-							du_dt += (netin[nx + ny*N_x][i].v - netin[x + y*N_x][j].v)*Grad;
-							a += Grad;
+							P_d2_Grad = (netin[x + y*N_x][j].pressure / (netin[x + y*N_x][j].density*netin[x + y*N_x][j].density) + P_d2)* GradW1(particleini.r, netin[x + y*N_x][j].r);
+							density += W(netin[x + y*N_x][j].r - particleini.r);
+							du_dt += (netin[x + y*N_x][j].v - particleini.v)*P_d2_Grad;
+							a += P_d2_Grad;
 						}
 					}
 				}
 				density *= m;
 				netout[nx + ny*N_x][i].density = density; 
-				netout[nx + ny*N_x][i].du_dt = m*netin[nx + ny*N_x][i].pressure*du_dt / (netin[nx + ny*N_x][i].density*netin[nx + ny*N_x][i].density);
+				netout[nx + ny*N_x][i].du_dt = m*du_dt / 2.0;
+				netout[nx + ny*N_x][i].u = particleini.u + netout[nx + ny*N_x][i].du_dt*dt;
 				netout[nx + ny*N_x][i].pressure = pressure(netout[nx + ny*N_x][i].u, density);
-				netout[nx + ny*N_x][i].u = netin[nx + ny*N_x][i].u + netout[nx + ny*N_x][i].du_dt*dt;
-				netout[nx + ny*N_x][i].a = -m*netin[nx + ny*N_x][i].pressure*a / (netin[nx + ny*N_x][i].density*netin[nx + ny*N_x][i].density);
-				netout[nx + ny*N_x][i].v = netin[nx + ny*N_x][i].v + netout[nx + ny*N_x][i].a*dt; 
+				netout[nx + ny*N_x][i].a = -m*a;
+				netout[nx + ny*N_x][i].v = particleini.v + netout[nx + ny*N_x][i].a*dt;
 				for (unsigned int x = nx - 1; x <= nx + 1; x++)
 				{
 					for (unsigned int y = ny - 1; y <= ny + 1; y++)
 					{
 						for (unsigned int j = 0; j < netin[x + y*N_x].size(); j++)
-							v_correction += ((2.0*W(netin[x + y*N_x][j].r - netin[nx + ny*N_x][i].r)) / (netin[nx + ny*N_x][i].density + netin[x + y*N_x][j].density))*(netin[x + y*N_x][j].v - netin[nx + ny*N_x][i].v);
+							v_correction += ((2.0*W(netin[x + y*N_x][j].r - particleini.r)) / (particleini.density + netin[x + y*N_x][j].density))*(netin[x + y*N_x][j].v - particleini.v);
 					}
 				}
 				v_correction *= correction_factor*m;
-				netout[nx + ny*N_x][i].r = netin[nx + ny*N_x][i].r + (netin[nx + ny*N_x][i].v + netout[nx + ny*N_x][i].v + 2.0*v_correction) *(dt / 2.0); 
+				netout[nx + ny*N_x][i].r = particleini.r + (particleini.v + netout[nx + ny*N_x][i].v + 2.0*v_correction) *(dt / 2.0);
 			}
 		}
 	}
