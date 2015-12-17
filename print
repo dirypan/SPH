@@ -1,16 +1,19 @@
+// makePicture.cpp : 定义控制台应用程序的入口点。
+//
 #include "stdafx.h"
 
 #include <gl\glut.h>
 #include <iostream>
 
-#define N 4000
+//#define N 1000
 #define width 20
 #define height 20
-#define pointsize 1
+#define pointsize 3
 
 using namespace std;
 
-const double Vmax = 160;
+const double Vmax = 100;
+int N=0;
 
 void init()
 {
@@ -33,6 +36,7 @@ void display()
 	glPointSize(pointsize);
 	int i;
 	double x, y,v;
+	cin >> N;
 	glBegin(GL_POINTS);
 	for (i = 1; i <= N ; i++)
 	{
