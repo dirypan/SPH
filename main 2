@@ -25,7 +25,7 @@ const unsigned int N0 = 1; //每个网格单元内初态的粒子数
 const double Width = 2.0 * h * Nx;
 const double Height = 2.0 * h * Ny;
 const double Gamma = 0.1; //Gruneisen 系数
-const double c0 = 1510.0; //声速
+const double c0 = 15.100; //声速
 const double s = 1.9;
 const double correction_factor =- 0.05;//位置修正系数
 const double pi = 3.141592653589793238462643; //圆周率
@@ -421,12 +421,13 @@ void next(vector<particle> netin[], vector<particle> netout[], double dt) //函�
 				{
 					for (unsigned int y = ny - 1; y <= ny + 1; y++)
 					{
+						//finout << netin[x + y*N_x][0].pressure / (netin[x + y*N_x][0].density*netin[x + y*N_x][0].density) << ' ' << P_d2 << "!!!" << endl;
 						for (unsigned int j = 0; j < netin[x + y*N_x].size(); j++)
 						{
-							//cout << netin[x + y*N_x][j].pressure / (netin[x + y*N_x][j].density*netin[x + y*N_x][j].density) <<' '<<P_d2 << "!!!" << endl;
+							
 							P_d2_Grad = (netin[x + y*N_x][j].pressure / (netin[x + y*N_x][j].density*netin[x + y*N_x][j].density) + P_d2)* GradW1(particleini.r, netin[x + y*N_x][j].r);
 							density += W(netin[x + y*N_x][j].r - particleini.r);
-							du_dt += -(netin[x + y*N_x][j].v - particleini.v)*P_d2_Grad;
+							du_dt += (netin[x + y*N_x][j].v - particleini.v)*P_d2_Grad;
 							a += P_d2_Grad;
 							//cout << P_d2_Grad.x << ' ' << P_d2_Grad.y << endl;
 						}
@@ -471,6 +472,7 @@ void divide(vector<particle> netin[], vector<particle> netout[])   //划分网�
 				double y = (netin[nx + ny*N_x][i].r.y) / (2.0 * h);
 				if (x <1 || x>(Nx + 1) || y<1 || y>(Ny + 1))
 				{
+					netin[N_x + N_x*N_y / 2].push_back({ {0,0},{0,0}, {0,0},0,0,0,0,0 });
 				}  
 				else netout[int (x) +int ( y)*N_x].push_back(netin[nx + ny*N_x][i]);
 			}
@@ -481,13 +483,13 @@ void divide(vector<particle> netin[], vector<particle> netout[])   //划分网�
 void initialization(vector<particle> netin[]) //初始化
 {
 	for ( int nx = 1; nx <= Nx; nx++)
-	{
+	{															 
 		for ( int ny = 1; ny <= Ny; ny++)
 		{
 			netin[nx + ny*N_x].resize(N0);
 			for (int k = 0; k < N0; k++)
-			//netin[nx + ny*N_x][k] = { { (nx + rand() / (RAND_MAX + 1.0)) * 2.0 * h , (ny + rand() / (RAND_MAX + 1.0)) * 2.0 * h } ,{ 20.0,0.0 },{ 0.0,0.0 }, 0.0, 0.0, 0.0, 0.0 };
-			netin[nx + ny*N_x][k] = { { (nx +0.5 +k/N0) * 2.0 * h , (ny + 0.5+k/N0) * 2.0 * h } ,{double(nx-Nx/2),0.0 },{ 0.0,0.0 }, 0.0, 0.0, 0.0, 0.0, 0.0 };
+			netin[nx + ny*N_x][k] = { { (nx + rand() / (RAND_MAX + 1.0)) * 2.0 * h , (ny + rand() / (RAND_MAX + 1.0)) * 2.0 * h } ,{ 20.0,0.0 },{ 0.0,0.0 }, 0.0, 0.0, 0.0, 0.0 };
+			//netin[nx + ny*N_x][k] = { { (nx +0.5 +k/N0) * 2.0 * h , (ny + 0.5+k/N0) * 2.0 * h } ,{double(nx-Nx/2),0.0 },{ 20.0,0.0 }, 0.0, 0.0, 0.0, 0.0, 0.0 };
 		}
 	}
 	boundary(netin);
@@ -522,12 +524,12 @@ int main()
 	vector<particle> net1[N], net2[N];
 	initialization(net1); //初始化	]
 	initialization(net2);
-	for (unsigned int f = 0; f < 1000; f++)
+	for (unsigned int f = 0; f < 10000; f++)
 	{
 		/*cout << "frame " << f << " : " << time(NULL) - t0 << 's' << endl;
 		finout << "frame " << f << " : " << time(NULL) - t0 << 's' << endl;	*/
 		output(net1);
-		next(net1, net2, 0.0001);
+		next(net1, net2, 0.01);
 		//finout << "24242424242424" << endl;
 		//output(net2);
 		/*cout << "frame " << f << " after next() : " << time(NULL) - t0 << 's' << endl;
