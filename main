@@ -284,61 +284,51 @@ void boundaryini(vector<particle> netin[])
 vec boundary(vector<particle> netin[], unsigned int i, unsigned int m) //边界力
 {
 	vec netforce = vec(0.0, 0.0);
-	if (i > N_x&&i < 2 * N_x)
+	if (i > N_x&&i < 2 * N_x - 1)
 	{
 		for (unsigned int j = i - N_x - 1; j <= i - N_x + 1; j++)
 		{
 			for (unsigned int k = 0; k < netin[j].size(); k++)
 			{
-				vec r = netin[i][m].r - netin[j][k].r;
-				netforce += D*r*(pow(r0, 4)*pow(r.mold(), -2) - pow(r0, 2)) / (pow(r.mold(), 4)); 
+				double r = (netin[i][m].r - netin[j][k].r).mold();
+				netforce += D*r*(pow(r0, 4)*pow(r, -2) - pow(r0, 2)) / (pow(r, 4)); 
 			}
 		}
 	}
-	else
+	else if (i > Ny*N_x&&i < Nx + Ny*N_x - 1)
 	{
-		if (i > Ny*N_x&&i < Nx + 1 + N_x*(Ny - 1))
+		for (unsigned int j = i + N_x - 1; j <= i + N_x + 1; j++)
 		{
-			for (unsigned int j = i + N_x - 1; j <= i + N_x + 1; j++)
+			for (unsigned int k = 0; k < netin[j].size(); k++)
 			{
-				for (unsigned int k = 0; k < netin[j].size(); k++)
-				{
-					vec r = netin[i][m].r - netin[j][k].r;
-					netforce += D*(r)*(pow(r0, 4)*pow(r.mold(), -2) - pow(r0, 2)) / (pow(r.mold(), 4)); 
-				}
-			}
-		}
-		else
-		{
-			if ((i - 1) % N_x == 0)
-			{
-				for (unsigned int j = -1; j <= 1; j++)
-				{
-					for (unsigned int k = 0; k < netin[i - 1 + j*N_x].size(); k++)
-					{
-						vec r = netin[i][m].r - netin[i - 1 + j*N_x][k].r;
-						netforce += D*(r)*(pow(r0, 4)*pow(r.mold(), -2) - pow(r0, 2)) / (pow(r.mold(), 4));
-					}
-				}
-
-			}
-			else
-			{
-				if ((i + 2) % N_x == 0)
-				{
-					for (unsigned int j = -1; j <= 1; j++)
-					{
-						for (unsigned int k = 0; k < netin[i + 1 + j*N_x].size(); k++)
-						{
-							vec r = netin[i][m].r - netin[i + 1 + j*N_x][k].r;
-							netforce += D*(r)*(pow(r0, 4)*pow(r.mold(), -2) - pow(r0, 2)) / (pow(r.mold(), 4));
-						}
-					}
-				}
+				double r = (netin[i][m].r - netin[j][k].r).mold();
+				netforce += D*r*(pow(r0, 4)*pow(r, -2) - pow(r0, 2)) / (pow(r, 4));
 			}
 		}
 	}
-	return netforce;
+	if ((i - 1) % N_x == 0)
+	{
+		for (unsigned int j = i - 1 - N_x; j <= i - 1 + N_x; j += N_x)
+		{
+			for (unsigned int k = 0; k < netin[j].size(); k++)
+			{
+				double r = (netin[i][m].r - netin[j][k].r).mold();
+				netforce += D*r*(pow(r0, 4)*pow(r, -2) - pow(r0, 2)) / (pow(r, 4));
+			}
+		}
+	}
+	else if ((i + 2) % N_x == 0)
+	{
+		for (unsigned int j = i + 1 - N_x; j <= i + 1 + N_x; j += N_x)
+		{
+			for (unsigned int k = 0; k < netin[j].size(); k++)
+			{
+				double r = (netin[i][m].r - netin[j][k].r).mold();
+				netforce += D*r*(pow(r0, 4)*pow(r, -2) - pow(r0, 2)) / (pow(r, 4));
+			}
+		}
+	}
+	return netforce; 
 }
 
 double pressure(double u, double density, double density0) //压强函数
