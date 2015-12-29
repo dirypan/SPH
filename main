@@ -39,14 +39,9 @@ class vec //矢量类
 public:
 	double x, y; //分量
 
-	vec(double X = 0.0, double Y = 0.0) //构造函数
+	vec(const double &X = 0.0, const double &Y = 0.0) //构造函数
 	{
 		x = X, y = Y;
-	}
-
-	vec(const vec &v) //拷贝构造函数
-	{
-		x = v.x, y = v.y;
 	}
 
 	double mold() //获取模
@@ -76,23 +71,28 @@ public:
 		return *this;
 	}
 
-	vec operator *(double k) //数乘
+	vec operator -() //负矢量
+	{
+		return{ -x, -y }; 
+	}
+
+	vec operator *(const double &k) //数乘
 	{
 		return{ k*x, k*y };
 	}
 
-	vec operator *=(double k) //数乘
+	vec operator *=(const double &k) //数乘
 	{
 		*this = (*this) * k;
 		return *this;
 	}
 
-	vec operator /(double k) //数乘
+	vec operator /(const double &k) //数乘
 	{
 		return{ x / k, y / k };
 	}
 
-	vec operator /=(double k) //数乘
+	vec operator /=(const double &k) //数乘
 	{
 		*this = (*this) / k;
 		return *this;
@@ -109,12 +109,7 @@ public:
 	}
 };
 
-vec operator -(const vec &v) //负矢量
-{
-	return{ -v.x, -v.y };
-}
-
-vec operator *(double k, const vec &r) //数乘
+vec operator *(const double &k, const vec &r) //数乘
 {
 	return{ k*r.x, k*r.y };
 }
@@ -331,6 +326,34 @@ vec boundary(vector<particle> netin[], unsigned int i, unsigned int m) //边界�
 	return netforce; 
 }
 
+void reflection(particle &part)
+{
+	if (part.r.x < 2.0*h)
+	{
+		part.r.x = 4.0*h - part.r.x;
+		part.v = -part.v;
+		return;
+	}
+	else	if (part.r.x > 2.0*(Nx + 1)*h)
+	{
+		part.r.x = 4.0*(Nx + 1)*h - part.r.x;
+		part.v = -part.v;
+		return;
+	}
+	else 	if (part.r.y < 2.0*h)
+	{
+		part.r.y = 4.0*h - part.r.y;
+		part.v = -part.v;
+		return;
+	}
+	else	if (part.r.y > 2.0*(Ny + 1)*h)
+	{
+		part.r.y = 4.0*(Nx + 1)*h - part.r.y;
+		part.v = -part.v;
+		return;
+	}
+}
+
 double pressure(double u, double density, double density0) //压强函数
 {
 	if (density == 0.0 || density0 == 0.0) 
@@ -407,6 +430,7 @@ void next(vector<particle> netin[], vector<particle> netout[], double &dt) //函
 
 void divide(vector<particle> netin[], vector<particle> netout[]) //划分网格
 {
+	particle particleini = {};
 	for (int ix = 1; ix <= Nx; ix++)
 	{
 		for (int iy = 1; iy <= Ny; iy++)
@@ -420,16 +444,9 @@ void divide(vector<particle> netin[], vector<particle> netout[]) //划分网格
 		{
 			for (unsigned int i = 0; i < netin[nx + ny*N_x].size(); i++)
 			{
-				//finout << "before " << netin[nx + ny*N_x][i].r.x << ' ' << netin[nx + ny*N_x][i].r.y << endl;
-				double x = (netin[nx + ny*N_x][i].r.x) / (2.0 * h);
-				double y = (netin[nx + ny*N_x][i].r.y) / (2.0 * h);
-				//finout << "divide " << x << ' ' << y<<endl;
-				if (x <= 1 || x >= (Nx + 1) || y <= 1 || y >= (Ny + 1))
-				{
-					//netin[Nx/2 + N_x*Ny / 2].push_back({{100.0,0.0},{0.0,0.0}, {0.0,0.0},1.0,1.0,1.0,1.0,1.0});
-				}
-				else 
-					netout[(int(x)) + (int(y))*N_x].push_back(netin[nx + ny*N_x][i]); 
+				particleini = netin[nx + ny*N_x][i]; 
+				reflection(particleini);
+				netout[(int((particleini.r.x) / (2.0 * h))) + (int((particleini.r.y) / (2.0 * h)))*N_x].push_back(particleini);
 			}
 		}
 	}
