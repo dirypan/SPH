@@ -27,6 +27,8 @@ const double Height = 2.0 * h * Ny;
 const double Gamma = 0.1; //Gruneisen 系数
 const double c0 = 15.100; //声速
 const double s = 0.19;
+const double alpha = 1.0;//viscosity中的可调参数
+const double h_0 = 1.5;//viscosity中的可调参数
 const double correction_factor = -0.05;//位置修正系数
 const double pi = 3.141592653589793238462643; //圆周率
 const double D = 0.1;//力作用常数
@@ -411,6 +413,9 @@ void next(vector<particle> netin[], vector<particle> netout[], double &dt) //函
 						{
 							particleinj = netin[periodicity(x, y)][j];
 							//finout << nx << ' ' << ny << ' ' << i <<' '<<j<<' ' << x << ' ' << y << ' ' << netin[x + y*N_x][j].pressure/* / (netin[x + y*N_x][j].density*netin[x + y*N_x][j].density)*/ << ' ' << P_d2 << "!!!" << endl;
+							//有bug的粘滞P_d2_Grad = (particleinj.pressure / (particleinj.density*particleinj.density) + P_d2)* GradW1(particleini.r, particleinj.r) + alpha*0.5*h_0*(1 / particleini.density + 1 / netin[x + y*N_x][j].density)*(netin[x + y*N_x][j].v - particleini.v)*(netin[x + y*N_x][j].r - particleini.r)*(c0 - h_0*(1 / particleini.density + 1 / netin[x + y*N_x][j].density)*(netin[x + y*N_x][j].v - particleini.v)*(netin[x + y*N_x][j].r - particleini.r) / 0.5*(particleini.density + netin[x + y*N_x][j].density)*(netin[x + y*N_x][j].r - particleini.r)*(netin[x + y*N_x][j].r - particleini.r));
+						        //density += W(particleinj.r - particleini.r);
+							//有bug的粘滞du_dt += (particleini.v - particleinj.v)*P_d2_Grad +  (netin[x + y*N_x][j].v - particleini.v)*GradW1(particleini.r, netin[x + y*N_x][j].r)*alpha* h_0*(1 / particleini.density + 1 / netin[x + y*N_x][j].density)*(netin[x + y*N_x][j].v - particleini.v)*(netin[x + y*N_x][j].r - particleini.r)*(c0 - h_0*(1 / particleini.density + 1 / netin[x + y*N_x][j].density)*(netin[x + y*N_x][j].v - particleini.v)*(netin[x + y*N_x][j].r - particleini.r)) / (0.5*(particleini.density + netin[x + y*N_x][j].density)*(netin[x + y*N_x][j].r - particleini.r)*(netin[x + y*N_x][j].r - particleini.r));
 							P_d2_Grad = (particleinj.pressure / (particleinj.density*particleinj.density) + P_d2)* GradW1(particleini.r, particleinj.r);
 							density += W(particleinj.r - particleini.r);
 							du_dt += (particleini.v - particleinj.v)*P_d2_Grad;
