@@ -29,9 +29,9 @@ const double c0 = 50.100; //声速
 const double s = 0.2;
 const double alpha = 1.0; //viscosity中的可调参数
 const double h_0 = 1.5; //viscosity中的可调参数
-const double correction_factor = -0.5;//位置修正系数
+const double correction_factor = -0.5; //位置修正系数
 const double pi = 3.141592653589793238462643; //圆周率
-const double D = 1.0;//力作用常数
+const double D = 1.0; //力作用常数
 const double r0 = 2.0 * h / sqrt(N0); //初始粒子间距
 const double e = 0.1;	 //e,a,b is the factors of viscosity;
 const double a = 2;
@@ -244,15 +244,15 @@ void setwall(vector<particle> netin[], int nx1, int ny1, int nx2, int ny2)
 	}
 }
 
-void setwall(vector<particle> netin[], int nx[], int ny[], unsigned int n,char mod='b') 
+void setwall(vector<particle> netin[], int nx[], int ny[], unsigned int n,char mod='B') 
 {
 	for (unsigned int i = 0; i < n - 1; i++)
 		setwall(netin, nx[i], ny[i], nx[i + 1], ny[i + 1]);
-	if (n > 2 && mod == 'c')
+	if (n > 2 && mod == 'C')
 		setwall(netin, nx[n - 1], ny[n - 1], nx[0], ny[0]);
 }
 
-void setpump(int nx1, int ny1, int nx2, int ny2, char mod = 'F') 
+void setpump(int nx1, int ny1, int nx2, int ny2, char mod = 'F', double pump_force = pumpforce)
 {
 	if (abs(nx2 - nx1) > abs(ny2 - ny1))
 	{
@@ -264,7 +264,7 @@ void setpump(int nx1, int ny1, int nx2, int ny2, char mod = 'F')
 			mod = 'F' + 'R' - mod;
 		}
 		vec force = { double(ny2 - ny1), double(nx1 - nx2) };
-		force *= pumpforce / force.mold();
+		force *= pump_force / force.mold();
 		if (mod != 'F')
 			force = -force;
 		for (int nx = nx1, ny; nx <= nx2; nx++)
@@ -284,7 +284,7 @@ void setpump(int nx1, int ny1, int nx2, int ny2, char mod = 'F')
 			mod = 'F' + 'R' - mod;
 		}
 		vec force = { double(ny2 - ny1), double(nx1 - nx2) };
-		force *= pumpforce / force.mold();
+		force *= pump_force / force.mold();
 		if (mod != 'F')
 			force = -force;
 		for (int ny = nx1, nx; ny <= ny2; ny++)
