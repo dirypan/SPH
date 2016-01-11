@@ -206,6 +206,7 @@ void output(vector<particle> netin[])
 
 void setwall(vector<particle> netin[], int nx1, int ny1, int nx2, int ny2)
 {
+	double x, y;
 	if (abs(nx2 - nx1) > abs(ny2 - ny1))
 	{
 		if (nx2 < nx1) 
@@ -215,12 +216,13 @@ void setwall(vector<particle> netin[], int nx1, int ny1, int nx2, int ny2)
 			nx2 = temp_nx, ny2 = temp_ny;
 		}
 		double k = double(ny2 - ny1) / (nx2 - nx1);
-		for (int nx = nx1, ny; nx <= nx2; nx++)
+		for (int nx = nx1; nx <= nx2; nx++)
 		{
-			ny = ny1 + k*(nx - nx1);
 			for (int i = 0; i <= N0; i++)
 			{
-				netin[nx + ny*N_x].push_back({ { (2 * nx + 2.0*i / N0)* h, (2 * ny + 2.0*i*k / N0) * h } ,{ 0.0,0.0 },{ 0.0,0.0 }, 0.0, 0.0, 0.0, wall_density, wall_density,true });
+				x = (2 * nx + 2.0*i / N0)* h;
+				y = k*(x - nx1) + ny1;
+				netin[nx + int(y)*N_x].push_back({ { x,y } ,{ 0.0,0.0 },{ 0.0,0.0 }, 0.0, 0.0, 0.0, wall_density, wall_density,true });
 			}
 		}
 	}
@@ -233,12 +235,13 @@ void setwall(vector<particle> netin[], int nx1, int ny1, int nx2, int ny2)
 			nx2 = temp_nx, ny2 = temp_ny;
 		}
 		double k = double(nx2 - nx1) / (ny2 - ny1);
-		for (int ny = nx1, nx; ny <= ny2; ny++)
+		for (int ny = nx1; ny <= ny2; ny++)
 		{
-			nx = nx1 + k*(ny - ny1);
 			for (int i = 0; i <= N0; i++)
 			{
-				netin[nx + ny*N_x].push_back({ { (2 * nx + 2.0*i*k / N0)* h, (2 * ny + 2.0*i / N0) * h } ,{ 0.0,0.0 },{ 0.0,0.0 }, 0.0, 0.0, 0.0, wall_density, wall_density,true });
+				y = (2 * ny + 2.0*i / N0)* h;
+				x = k*(y - ny1) + nx1;
+				netin[int(x) + ny*N_x].push_back({ { x,y } ,{ 0.0,0.0 },{ 0.0,0.0 }, 0.0, 0.0, 0.0, wall_density, wall_density,true }); 
 			}
 		}
 	}
@@ -545,8 +548,8 @@ void initialization(vector<particle> netin[]) //初始化
 			}
 		}
 	}
-	setwall(netin, 1, 1, Nx / 3, Ny / 3);
-	setpump(1, 1, Nx, 1);
+	setwall(netin, 1, 1, Nx, Ny / 3);
+	setpump(1, 1, 1, Ny); 
 }
 
 int main()
