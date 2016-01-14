@@ -1,44 +1,45 @@
-// makePicture.cpp : 定义控制台应用程序的入口点。
+// makePicture.cpp :
 //
 #include "stdafx.h"
 
 #include <gl\glut.h>
 #include <iostream>
+#include <Windows.h>
 
-//#define N 1000
-#define width 20
-#define height 20
-#define pointsize 3
+//#define N 200
+#define width 51
+#define height 51
+#define pointsize 10
 
 using namespace std;
-
-const double Vmax = 100;
-int N=0;
+int N;
+const double Vmax = 50;
 
 void init()
 {
 	glClearColor(1, 0, 0, 0);
-	glShadeModel(GL_FLAT);
+	//glShadeModel(GL_FLAT);
 }
 
 void switchColor(double v)
 {
-	double r, g , b;
-	r = (Vmax - v) / Vmax;
-	g = v / Vmax;
+	double r, g, b;
+	g = (Vmax - v) / Vmax;
+	r = v / Vmax;
 	b = 0;
-	glColor3f(r,g,b);
+	glColor3f(r, g, b);
 }
 
 void display()
 {
 	glClear(GL_COLOR_BUFFER_BIT);
 	glPointSize(pointsize);
+	glEnable(GL_POINT_SMOOTH);
+	glHint(GL_POINT_SMOOTH, GL_NICEST);
 	int i;
-	double x, y,v;
-	cin >> N;
+	double x, y, v;
 	glBegin(GL_POINTS);
-	for (i = 1; i <= N ; i++)
+	for (i = 1; i <= N; i++)
 	{
 		cin >> x >> y >> v;
 		switchColor(v);
@@ -57,30 +58,62 @@ void reshape(int w, int h)
 	gluOrtho2D(0, width, 0, height);
 }
 
+bool Click = false;
+int SleepFrequency = 1;
+
+void cinN()
+{
+	cin >> N;
+	Sleep(1000 / SleepFrequency);
+	glutPostRedisplay();
+}
+
+void motion(int x, int y)
+{
+	if (Click)
+	{
+		SleepFrequency = x/5 ;
+		if (SleepFrequency < 1) SleepFrequency = 1;
+		if (SleepFrequency >= 120) SleepFrequency = 120;
+		cout << SleepFrequency << endl;
+	}
+}
+
 void mouse(int button, int state, int x, int y)
 {
 	switch (button)
 	{
 	case GLUT_LEFT_BUTTON:
-		if (state == GLUT_DOWN) 
-			display();
+		if (state == GLUT_DOWN)
+		{
+			Click = true;
+			glutIdleFunc(cinN);
+		};
+		break;
+	case GLUT_RIGHT_BUTTON:
+		if (state == GLUT_DOWN)
+		{
+			glutIdleFunc(NULL);
+			Click = false;
+		};
 		break;
 	default:
 		break;
 	}
 }
 
-int main(int argc,char** argv)
+int main(int argc, char** argv)
 {
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_RGB | GLUT_SINGLE);
-	glutInitWindowSize(width*10, height*10);
+	glutInitWindowSize(width * 50, height * 50);
 	glutInitWindowPosition(100, 100);
 	glutCreateWindow(argv[0]);
 	freopen("out.txt", "r", stdin);
 	glutDisplayFunc(display);
 	glutReshapeFunc(reshape);
 	glutMouseFunc(mouse);
+	glutMotionFunc(motion);
 	glutMainLoop();
-    return 0;
+	return 0;
 }
