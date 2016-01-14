@@ -1,18 +1,20 @@
-// makePicture.cpp :
+// OpenGL.cpp : 定义控制台应用程序的入口点。
 //
-#include "stdafx.h"
 
+#include "stdafx.h"
 #include <gl\glut.h>
 #include <iostream>
+#include <fstream>
 #include <Windows.h>
 
-//#define N 200
-#define width 51
-#define height 51
-#define pointsize 10
-
 using namespace std;
+
+fstream fin;
+
 int N;
+int width = 20;
+int height = 20;
+int pointsize = 5;
 const double Vmax = 50;
 
 void init()
@@ -41,9 +43,9 @@ void display()
 	glBegin(GL_POINTS);
 	for (i = 1; i <= N; i++)
 	{
-		cin >> x >> y >> v;
+		fin >> x >> y >> v;
+		fin.get();
 		switchColor(v);
-		cin.get();
 		glVertex2f(x, y);
 	}
 	glEnd();
@@ -61,9 +63,9 @@ void reshape(int w, int h)
 bool Click = false;
 int SleepFrequency = 1;
 
-void cinN()
+void finN()
 {
-	cin >> N;
+	fin >> N;
 	Sleep(1000 / SleepFrequency);
 	glutPostRedisplay();
 }
@@ -72,7 +74,7 @@ void motion(int x, int y)
 {
 	if (Click)
 	{
-		SleepFrequency = x/5 ;
+		SleepFrequency = x / 5;
 		if (SleepFrequency < 1) SleepFrequency = 1;
 		if (SleepFrequency >= 120) SleepFrequency = 120;
 		cout << SleepFrequency << endl;
@@ -87,7 +89,7 @@ void mouse(int button, int state, int x, int y)
 		if (state == GLUT_DOWN)
 		{
 			Click = true;
-			glutIdleFunc(cinN);
+			glutIdleFunc(finN);
 		};
 		break;
 	case GLUT_RIGHT_BUTTON:
@@ -104,12 +106,13 @@ void mouse(int button, int state, int x, int y)
 
 int main(int argc, char** argv)
 {
+	fin.open("D:\out.txt", ios_base::in);
+	fin >> width >> height;
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_RGB | GLUT_SINGLE);
 	glutInitWindowSize(width * 50, height * 50);
 	glutInitWindowPosition(100, 100);
 	glutCreateWindow(argv[0]);
-	freopen("out.txt", "r", stdin);
 	glutDisplayFunc(display);
 	glutReshapeFunc(reshape);
 	glutMouseFunc(mouse);
