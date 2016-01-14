@@ -1,4 +1,4 @@
-// FluidsX.cpp : 定义控制台应用程序的入口点。
+// Fluids.cpp : 定义控制台应用程序的入口点。
 //
 
 #include "stdafx.h"
@@ -12,16 +12,16 @@
 
 using namespace std;
 
-fstream finout;
+fstream fout;
 
 const double h = 0.5;
 const double m = 5;
-const  int Nx = 15; //横向网格个数
-const int Ny = 15; //纵向网格个数
+const  int Nx = 20; //横向网格个数
+const int Ny = 20; //纵向网格个数
 const int N_x = Nx + 2;
 const int N_y = Nx + 2;
 const int N = N_x*N_y; //总网格个数
-const int N0 = 20; //每个网格单元内初态的粒子数
+const int N0 = 4; //每个网格单元内初态的粒子数
 const double Width = 2.0 * h * Nx;
 const double Height = 2.0 * h * Ny;
 const double Gamma = 0.1; //Gruneisen 系数
@@ -49,6 +49,11 @@ public:
 	vec(const double &X = 0.0, const double &Y = 0.0) //构造函数
 	{
 		x = X, y = Y;
+	}
+
+	double mold2() //获取模方
+	{
+		return x*x + y*y;
 	}
 
 	double mold() //获取模
@@ -114,6 +119,11 @@ public:
 	{
 		return (x == v.x && y == v.y);
 	}
+
+	bool operator !=(const vec &v) //判断不等
+	{
+		return (x != v.x || y != v.y);
+	}
 };
 
 vec operator *(const double &k, const vec &r) //数乘
@@ -125,10 +135,9 @@ struct particle //粒子结构
 {
 	vec r, v, a;
 	double u, du_dt, pressure, density, density0;
-	bool is_wall;
 };
 
-vec pump[N] = {};
+vec pump[N] = {}, wall[N] = {};
 
 double W(double rx, double ry) //样条核函数
 {
@@ -153,7 +162,7 @@ double W(const vec &r1, const vec &r2) //样条核函数
 	return W(r2.x - r1.x, r2.y - r1.y);
 }
 
-vec GradW(double rx, double ry = 0.0) //样条核函数梯度
+vec gradW(double rx, double ry = 0.0) //样条核函数梯度
 {
 	double GradW;
 	double s = sqrt(rx * rx + ry * ry) / h;
@@ -166,40 +175,48 @@ vec GradW(double rx, double ry = 0.0) //样条核函数梯度
 	return (GradW * 10.0*s / (7.0 * pi * h * h*h*h))*vec(rx, ry);
 }
 
-vec GradW(const vec &r) //样条核函数梯度
+vec gradW(const vec &r) //样条核函数梯度
 {
-	return GradW(r.x, r.y);
+	return gradW(r.x, r.y);
 }
 
-vec GradW1(const vec &r1, const vec &r2) //样条核函数梯度
+vec gradW1(const vec &r1, const vec &r2) //样条核函数梯度
 {
-	return GradW(r1.x - r2.x, r1.y - r2.y);
+	return gradW(r1.x - r2.x, r1.y - r2.y);
 }
 
-vec GradW2(const vec &r1, const vec &r2) //样条核函数梯度
+vec gradW2(const vec &r1, const vec &r2) //样条核函数梯度
 {
-	return GradW(r2.x - r1.x, r2.y - r1.y);
+	return gradW(r2.x - r1.x, r2.y - r1.y);
 }
 
 void output(vector<particle> netin[])
 {
-	int sum = 0;
-	for (int nx = 0; nx <= Nx + 1; nx++)
+	int sum = 0, net_i;
+	for (int net_i = 0; net_i < N; ++net_i)
 	{
-		for (int ny = 0; ny <= Ny + 1; ny++)
-			sum += netin[nx + N_x*ny].size();
+		sum += netin[net_i].size();
+		if (pump[net_i].mold2() > 0.0)
+			++sum;
+		if (wall[net_i].mold2() > 0.0)
+			++sum;
 	}
-	finout << sum << endl;
-	for (int nx = 0; nx <= Nx + 1; nx++)
+	fout << sum << endl;
+	for (int nx = 0; nx <= Nx + 1; ++nx)
 	{
-		for (int ny = 0; ny <= Ny + 1; ny++)
+		for (int ny = 0; ny <= Ny + 1; ++ny)
 		{
-			for (int i = 0; i < netin[nx + ny*N_x].size(); i++)
+			net_i = nx + ny*N_x;
+			for (int i = 0; i < netin[net_i].size(); ++i)
 			{
-				finout << setw(8) << netin[nx + ny*N_x][i].r.x << " "; 
-				finout << setw(8) << netin[nx + ny*N_x][i].r.y << " "; 
-				finout << setw(8) << netin[nx + ny*N_x][i].v.mold() << endl;
+				fout << setw(8) << netin[net_i][i].r.x << " ";
+				fout << setw(8) << netin[net_i][i].r.y << " ";
+				fout << setw(8) << netin[net_i][i].v.mold() << endl;			
 			}
+			if (pump[net_i].mold2() > 0.0)
+				fout << setw(8) << (2 * nx + 1)*h << " " << setw(8) << (2 * ny + 1)*h << " " << setw(8) << 100.0 << endl;
+			if (wall[net_i].mold2() > 0.0)
+				fout << setw(8) << (2 * nx + 1)*h << " " << setw(8) << (2 * ny + 1)*h << " " << setw(8) << 0.0 << endl;
 		}
 	}
 }
@@ -219,27 +236,20 @@ void periodicity(particle &particlein)
 		particlein.r.y += k*Height;
 }
 
-void setwall(vector<particle> netin[], int nx1, int ny1, int nx2, int ny2)
+void setWall(int nx1, int ny1, int nx2, int ny2)
 {
-	double x, y;
 	if (abs(nx2 - nx1) > abs(ny2 - ny1))
 	{
-		if (nx2 < nx1) 
+		if (nx2 < nx1)
 		{
 			int temp_nx = nx1, temp_ny = ny1;
 			nx1 = nx2, ny1 = ny2;
 			nx2 = temp_nx, ny2 = temp_ny;
 		}
-		double k = double(ny2 - ny1) / (nx2 - nx1);
-		for (int nx = nx1; nx <= nx2; nx++)
-		{
-			for (int i = 0; i <= N0; i++)
-			{
-				x = (2 * nx + 2.0*i / N0)* h;
-				y = k*(x - nx1) + ny1;
-				netin[nx + int(y)*N_x].push_back({ { x,y } ,{ 0.0,0.0 },{ 0.0,0.0 }, 0.0, 0.0, 0.0, wall_density, wall_density,true });
-			}
-		}
+		vec walln = { double(ny2 - ny1), double(nx1 - nx2) };
+		walln /= walln.mold();
+		for (int nx = nx1; nx <= nx2; ++nx)
+			wall[nx + ((ny2 - ny1)*(nx - nx1) / (nx2 - nx1) + ny1)*N_x] = walln;
 	}
 	else if (ny1 != ny2)
 	{
@@ -249,28 +259,22 @@ void setwall(vector<particle> netin[], int nx1, int ny1, int nx2, int ny2)
 			nx1 = nx2, ny1 = ny2;
 			nx2 = temp_nx, ny2 = temp_ny;
 		}
-		double k = double(nx2 - nx1) / (ny2 - ny1);
-		for (int ny = nx1; ny <= ny2; ny++)
-		{
-			for (int i = 0; i <= N0; i++)
-			{
-				y = (2 * ny + 2.0*i / N0)* h;
-				x = k*(y - ny1) + nx1;
-				netin[int(x) + ny*N_x].push_back({ { x,y } ,{ 0.0,0.0 },{ 0.0,0.0 }, 0.0, 0.0, 0.0, wall_density, wall_density,true }); 
-			}
-		}
+		vec walln = { double(ny2 - ny1), double(nx1 - nx2) };
+		walln /= walln.mold();
+		for (int ny = ny1; ny <= ny2; ++ny)
+			wall[(nx2 - nx1)*(ny - ny1) / (ny2 - ny1) + nx1 + ny*N_x] = walln; 
 	}
 }
 
-void setwall(vector<particle> netin[], int nx[], int ny[], int n,char mod='B') 
+void setWall(int nx[], int ny[], int n, char mod = 'B')
 {
-	for (int i = 0; i < n - 1; i++)
-		setwall(netin, nx[i], ny[i], nx[i + 1], ny[i + 1]);
+	for (int i = 0; i < n - 1; ++i)
+		setWall(nx[i], ny[i], nx[i + 1], ny[i + 1]);
 	if (n > 2 && mod == 'C')
-		setwall(netin, nx[n - 1], ny[n - 1], nx[0], ny[0]);
+		setWall(nx[n - 1], ny[n - 1], nx[0], ny[0]);
 }
 
-void setpump(int nx1, int ny1, int nx2, int ny2, char mod = 'F', double pump_force = pumpforce)
+void setPump(int nx1, int ny1, int nx2, int ny2, char mod = 'F', double pump_force = pumpforce)
 {
 	pump_force /= 2.0;
 	if (abs(nx2 - nx1) > abs(ny2 - ny1))
@@ -286,10 +290,10 @@ void setpump(int nx1, int ny1, int nx2, int ny2, char mod = 'F', double pump_for
 		force *= pump_force / force.mold();
 		if (mod != 'F')
 			force = -force;
-		for (int nx = nx1, ny; nx <= nx2; nx++)
+		for (int nx = nx1, ny; nx <= nx2; ++nx)
 		{
 			ny = ny1 + (ny2 - ny1) *(nx - nx1) / (nx2 - nx1);
-			for (int i = 0; i <= N0; i++)
+			for (int i = 0; i <= N0; ++i)
 			{
 				pump[nx + ny*N_x] += 2.0*force;
 				pump[periodicity(nx - 1, ny)] += force;
@@ -312,10 +316,10 @@ void setpump(int nx1, int ny1, int nx2, int ny2, char mod = 'F', double pump_for
 		force *= pump_force / force.mold();
 		if (mod != 'F')
 			force = -force;
-		for (int ny = nx1, nx; ny <= ny2; ny++)
+		for (int ny = nx1, nx; ny <= ny2; ++ny)
 		{
 			nx = nx1 + (nx2 - nx1) *(ny - ny1) / (ny2 - ny1);
-			for (int i = 0; i <= N0; i++)
+			for (int i = 0; i <= N0; ++i)
 			{
 				pump[nx + ny*N_x] += 2.0*force;
 				pump[periodicity(nx - 1, ny)] += force;
@@ -327,7 +331,7 @@ void setpump(int nx1, int ny1, int nx2, int ny2, char mod = 'F', double pump_for
 	}
 }
 
-void setpump(int nx1, int ny1, int nx2, int ny2, vec force)
+void setPump(int nx1, int ny1, int nx2, int ny2, vec force)
 {
 	force /= 2.0;
 	if (abs(nx2 - nx1) > abs(ny2 - ny1))
@@ -338,16 +342,16 @@ void setpump(int nx1, int ny1, int nx2, int ny2, vec force)
 			nx1 = nx2, ny1 = ny2;
 			nx2 = temp_nx, ny2 = temp_ny;
 		}
-		for (int nx = nx1, ny; nx <= nx2; nx++)
+		for (int nx = nx1, ny; nx <= nx2; ++nx)
 		{
 			ny = ny1 + (ny2 - ny1) *(nx - nx1) / (nx2 - nx1);
-			for (int i = 0; i <= N0; i++) 
+			for (int i = 0; i <= N0; ++i)
 			{
 				pump[nx + ny*N_x] += 2.0*force;
-				pump[periodicity(nx - 1, ny)] += force; 
-				pump[periodicity(nx + 1, ny)] += force; 
-				pump[periodicity(nx, ny - 1)] += force; 
-				pump[periodicity(nx, ny + 1)] += force; 
+				pump[periodicity(nx - 1, ny)] += force;
+				pump[periodicity(nx + 1, ny)] += force;
+				pump[periodicity(nx, ny - 1)] += force;
+				pump[periodicity(nx, ny + 1)] += force;
 			}
 		}
 	}
@@ -359,10 +363,10 @@ void setpump(int nx1, int ny1, int nx2, int ny2, vec force)
 			nx1 = nx2, ny1 = ny2;
 			nx2 = temp_nx, ny2 = temp_ny;
 		}
-		for (int ny = nx1, nx; ny <= ny2; ny++)
+		for (int ny = nx1, nx; ny <= ny2; ++ny)
 		{
 			nx = nx1 + (nx2 - nx1) *(ny - ny1) / (ny2 - ny1);
-			for (int i = 0; i <= N0; i++)
+			for (int i = 0; i <= N0; ++i)
 			{
 				pump[nx + ny*N_x] += 2.0*force;
 				pump[periodicity(nx - 1, ny)] += force;
@@ -374,9 +378,9 @@ void setpump(int nx1, int ny1, int nx2, int ny2, vec force)
 	}
 }
 
-void setgravity(const vec &g) 
+void setGravity(const vec &g)
 {
-	for (int i = 0; i < N; i++)
+	for (int i = 0; i < N; ++i)
 		pump[i] += g;
 }
 
@@ -385,9 +389,9 @@ vec boundary(vector<particle> netin[], int i, int m) //边界力
 	vec netforce = vec(0.0, 0.0);
 	if ((i > N_x) && (i < 2 * N_x - 1))
 	{
-		for (int j = i - N_x - 1; j <= i - N_x + 1; j++)
+		for (int j = i - N_x - 1; j <= i - N_x + 1; ++j)
 		{
-			for (int k = 0; k < netin[j].size(); k++)
+			for (int k = 0; k < netin[j].size(); ++k)
 			{
 				vec r = netin[i][m].r - netin[j][k].r;
 				double rmin = (r.mold() <= 0.3*h ? 0.3*h : r.mold());
@@ -398,9 +402,9 @@ vec boundary(vector<particle> netin[], int i, int m) //边界力
 	}
 	else if ((i > Ny*N_x) && (i < Nx + Ny*N_x - 1))
 	{
-		for (int j = i + N_x - 1; j <= i + N_x + 1; j++)
+		for (int j = i + N_x - 1; j <= i + N_x + 1; ++j)
 		{
-			for (int k = 0; k < netin[j].size(); k++)
+			for (int k = 0; k < netin[j].size(); ++k)
 			{
 				vec r = netin[i][m].r - netin[j][k].r;
 				double rmin = (r.mold() <= 0.3*h ? 0.3*h : r.mold());
@@ -413,7 +417,7 @@ vec boundary(vector<particle> netin[], int i, int m) //边界力
 	{
 		for (int j = i - 1 - N_x; j <= i - 1 + N_x; j += N_x)
 		{
-			for (int k = 0; k < netin[j].size(); k++)
+			for (int k = 0; k < netin[j].size(); ++k)
 			{
 				vec r = netin[i][m].r - netin[j][k].r;
 				double rmin = (r.mold() <= 0.3*h ? 0.3*h : r.mold());
@@ -426,7 +430,7 @@ vec boundary(vector<particle> netin[], int i, int m) //边界力
 	{
 		for (int j = i + 1 - N_x; j <= i + 1 + N_x; j += N_x)
 		{
-			for (int k = 0; k < netin[j].size(); k++)
+			for (int k = 0; k < netin[j].size(); ++k)
 			{
 				vec r = netin[i][m].r - netin[j][k].r;
 				double rmin = (r.mold() <= 0.3*h ? 0.3*h : r.mold());
@@ -469,54 +473,48 @@ double pressure(double u, double density, double density0) //压强函数
 
 void next(vector<particle> netin[], vector<particle> netout[], double &dt) //函数
 {
-	int net_i, net_i_size, net_j, net_j_size; 
+	int net_i, net_i_size, net_j, net_j_size;
 	particle particlein_i = {}, particlein_j = {};
 	double density = 0.0, du_dt = 0.0, P_d2;
 	vec a = { 0.0, 0.0 }, P_d2_Grad = { 0.0, 0.0 }, v_correction = { 0.0,0.0 };
-	for (int nx = 1; nx <= Nx; nx++)
+	for (int nx = 1; nx <= Nx; ++nx)
 	{
-		for (int ny = 1; ny <= Ny; ny++)
+		for (int ny = 1; ny <= Ny; ++ny)
 		{
-	 		net_i = nx + ny*N_x;
-	 		net_i_size = netin[net_i].size();
-		 	netout[net_i].resize(net_i_size);
-	 		for (int i = 0; i < net_i_size; i++)
-	 		{
+			net_i = nx + ny*N_x;
+			net_i_size = netin[net_i].size();
+			netout[net_i].resize(net_i_size);
+			for (int i = 0; i < net_i_size; ++i)
+			{
 				particlein_i = netin[net_i][i];
-				if (particlein_i.is_wall) 
-					netout[net_i][i] = particlein_i;
-				else
+				a = { 0.0, 0.0 }, P_d2_Grad = { 0.0, 0.0 }, v_correction = { 0.0,0.0 }, density = 0.0, du_dt = 0.0, P_d2 = particlein_i.pressure / (particlein_i.density*particlein_i.density);
+				for (int x = nx - 1; x <= nx + 1; ++x)
 				{
-					a = { 0.0, 0.0 }, P_d2_Grad = { 0.0, 0.0 }, v_correction = { 0.0,0.0 }, density = 0.0, du_dt = 0.0, P_d2 = particlein_i.pressure / (particlein_i.density*particlein_i.density);
-					for (int x = nx - 1; x <= nx + 1; x++)
+					for (int y = ny - 1; y <= ny + 1; ++y)
 					{
-						for (int y = ny - 1; y <= ny + 1; y++)
+						net_j = periodicity(x, y);
+						net_j_size = netin[net_j].size();
+						for (int j = 0; j < net_j_size; ++j)
 						{
-							net_j = periodicity(x, y);
-							net_j_size = netin[net_j].size();
-							for (int j = 0; j < net_j_size; j++)
-							{
-								particlein_j = netin[net_j][j];
-								P_d2_Grad = (particlein_j.pressure / (particlein_j.density*particlein_j.density) + P_d2 + viscosity(particlein_j, particlein_i))* GradW1(particlein_i.r, particlein_j.r);
-								density += W(particlein_j.r - particlein_i.r);
-								du_dt += (particlein_i.v - particlein_j.v)*(P_d2 + 0.5*viscosity(particlein_j, particlein_i))* (GradW1(particlein_i.r, particlein_j.r));
-								a += P_d2_Grad;
-								v_correction += ((2.0*W(particlein_j.r - particlein_i.r)) / (particlein_i.density + particlein_j.density))*(particlein_i.v - particlein_j.v);
-							}
+							particlein_j = netin[net_j][j];
+							P_d2_Grad = (particlein_j.pressure / (particlein_j.density*particlein_j.density) + P_d2 + viscosity(particlein_j, particlein_i))* gradW1(particlein_i.r, particlein_j.r);
+							density += W(particlein_j.r - particlein_i.r);
+							du_dt += (particlein_i.v - particlein_j.v)*(P_d2 + 0.5*viscosity(particlein_j, particlein_i))* (gradW1(particlein_i.r, particlein_j.r));
+							a += P_d2_Grad;
+							v_correction += ((2.0*W(particlein_j.r - particlein_i.r)) / (particlein_i.density + particlein_j.density))*(particlein_i.v - particlein_j.v);
 						}
 					}
-					density *= m, du_dt *= m / 2.0, a = -m*a + pump[net_i];
-					netout[net_i][i].density = density;
-					netout[net_i][i].du_dt = du_dt;
-					netout[net_i][i].u = particlein_i.u + du_dt*dt;
-					netout[net_i][i].pressure = pressure(netout[net_i][i].u, density, netin[net_i][i].density0);
-					netout[net_i][i].a = a;
-					netout[net_i][i].v = particlein_i.v + a*dt;
-					v_correction *= correction_factor*m;
-					netout[net_i][i].r = particlein_i.r + (2.0*particlein_i.v + a*dt + 2.0*v_correction) *(dt / 2.0);
-					netout[net_i][i].is_wall = false;
-					periodicity(netout[net_i][i]);
 				}
+				density *= m, du_dt *= m / 2.0, a = -m*a + pump[net_i];
+				netout[net_i][i].density = density;
+				netout[net_i][i].du_dt = du_dt;
+				netout[net_i][i].u = particlein_i.u + du_dt*dt;
+				netout[net_i][i].pressure = pressure(netout[net_i][i].u, density, netin[net_i][i].density0);
+				netout[net_i][i].a = a;
+				netout[net_i][i].v = particlein_i.v + a*dt;
+				v_correction *= correction_factor*m;
+				netout[net_i][i].r = particlein_i.r + (2.0*particlein_i.v + a*dt + 2.0*v_correction) *(dt / 2.0);
+				periodicity(netout[net_i][i]);
 			}
 		}
 	}
@@ -525,21 +523,20 @@ void next(vector<particle> netin[], vector<particle> netout[], double &dt) //函
 void divide(vector<particle> netin[], vector<particle> netout[]) //划分网格
 {
 	particle particlein_i = {};
-	for (int ix = 1; ix <= Nx; ix++)
+	int net_i;
+	for (int net_i = 0; net_i < N; ++net_i)
+		netout[net_i].clear();
+	for (int nx = 1; nx <= Nx; ++nx)
 	{
-		for (int iy = 1; iy <= Ny; iy++)
+		for (int ny = 1; ny <= Ny; ++ny)
 		{
-			netout[ix + iy*N_x].clear();
-		}
-	}
-	for (int nx = 1; nx <= Nx; nx++)
-	{
-		for (int ny = 1; ny <= Ny; ny++)
-		{
-			for (int i = 0; i < netin[nx + ny*N_x].size(); i++)
+			for (int i = 0; i < netin[nx + ny*N_x].size(); ++i)
 			{
 				particlein_i = netin[nx + ny*N_x][i];
-				netout[(int((particlein_i.r.x) / (2.0 * h))) + (int((particlein_i.r.y) / (2.0 * h)))*N_x].push_back(particlein_i);
+				net_i = (int((particlein_i.r.x) / (2.0 * h))) + (int((particlein_i.r.y) / (2.0 * h)))*N_x;
+				if (wall[net_i].mold2()>0.0)
+					particlein_i.v -= (particlein_i.v*wall[net_i])*wall[net_i]; 
+				netout[net_i].push_back(particlein_i);
 			}
 		}
 	}
@@ -548,29 +545,29 @@ void divide(vector<particle> netin[], vector<particle> netout[]) //划分网格
 void initialization(vector<particle> netin[]) //初始化
 {
 	srand(time(NULL));
-	for (int nx = 1; nx <= Nx; nx++)
+	for (int nx = 1; nx <= Nx; ++nx)
 	{
-		for (int ny = 1; ny <= Ny; ny++)
+		for (int ny = 1; ny <= Ny; ++ny)
 		{
 			netin[nx + ny*N_x].resize(N0);
-			for (double k = 0; k < N0; k++)
-				netin[nx + ny*N_x][k] = { { (nx + rand() / (RAND_MAX + 1.0)) * 2.0 * h , (ny + rand() / (RAND_MAX + 1.0)) * 2.0 * h } ,{ 0.0,0.0 },{ 0.0,0.0 }, 0.0, 0.0, 0.0, 0.0, 0.0,false }; 
+			for (double k = 0; k < N0; ++k)
+				netin[nx + ny*N_x][k] = { { (nx + rand() / (RAND_MAX + 1.0)) * 2.0 * h , (ny + rand() / (RAND_MAX + 1.0)) * 2.0 * h } ,{ 0.0,0.0 },{ 0.0,0.0 }, 0.0, 0.0, 0.0, 0.0, 0.0 };
 		}
 	}
 	double density = 0.0;
-	for (int nx = 1; nx <= Nx; nx++)
+	for (int nx = 1; nx <= Nx; ++nx)
 	{
-		for (int ny = 1; ny <= Ny; ny++)
+		for (int ny = 1; ny <= Ny; ++ny)
 		{
-			for (int i = 0; i < N0; i++)
+			for (int i = 0; i < N0; ++i)
 			{
 				density = 0.0;
-				for (int x = nx - 1; x <= nx + 1; x++)
+				for (int x = nx - 1; x <= nx + 1; ++x)
 				{
-					for (int y = ny - 1; y <= ny + 1; y++)
+					for (int y = ny - 1; y <= ny + 1; ++y)
 					{
-						for (int j = 0; j < N0; j++)
-							density += W(netin[periodicity(x, y)][j].r - netin[nx + ny*N_x][i].r); 
+						for (int j = 0; j < N0; ++j)
+							density += W(netin[periodicity(x, y)][j].r - netin[nx + ny*N_x][i].r);
 					}
 				}
 				density *= m;
@@ -580,17 +577,19 @@ void initialization(vector<particle> netin[]) //初始化
 			}
 		}
 	}
-	setwall(netin, 1, 1, Nx, Ny / 3);
-	setpump(1, 1, 1, Ny); 
+	setWall(1, 1, 2 * Nx / 3, Ny / 3);
+	setPump(1, 1, 1, Ny);
+	setPump(Nx / 2, 1, Nx / 2, Ny);
 }
 
 int main()
 {
-	finout.open("D:\out.txt", ios_base::out);
+	fout.open("D:\out.txt", ios_base::out);
+	fout << N_x << ' ' << N_y << endl; 
 	vector<particle> net1[N], net2[N];
 	double dt = 0.001;
 	initialization(net1); //初始化	
-	for (int f = 0; f < 10000; f++)
+	for (int f = 0; f < 10000; ++f)
 	{
 		cout << "frame " << f << " : " << time(NULL) - t0 << 's' << endl;
 		output(net1);
