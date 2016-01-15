@@ -164,12 +164,12 @@ vec gradW2(const vec &r1, const vec &r2) //样条核函数梯度
 	return gradW(r2.x - r1.x, r2.y - r1.y);
 }
 
-int periodicity(int nx, int ny)
+int periodicity(int nx, int ny) //周期性条件
 {
 	return (nx + Nx - 1) % Nx + 1 + ((ny + Ny - 1) % Ny + 1)*N_x;
 }
 
-void periodicity(particle &particlein)
+void periodicity(particle &particlein) //周期性条件
 {
 	int k = (particlein.r.x < 2.0*h ? 1 : -1);
 	while (particlein.r.x<2.0*h || particlein.r.x>Width + 2.0*h)
@@ -179,7 +179,7 @@ void periodicity(particle &particlein)
 		particlein.r.y += k*Height;
 }
 
-void setWall(int nx1, int ny1, int nx2, int ny2)
+void setWall(int nx1, int ny1, int nx2, int ny2) //设置墙
 {
 	if (abs(nx2 - nx1) > abs(ny2 - ny1))
 	{
@@ -209,7 +209,7 @@ void setWall(int nx1, int ny1, int nx2, int ny2)
 	}
 }
 
-void setWall(int nx[], int ny[], int n, char mod)
+void setWall(int nx[], int ny[], int n, char mod) //设置墙
 {
 	for (int i = 0; i < n - 1; ++i)
 		setWall(nx[i], ny[i], nx[i + 1], ny[i + 1]);
@@ -217,9 +217,8 @@ void setWall(int nx[], int ny[], int n, char mod)
 		setWall(nx[n - 1], ny[n - 1], nx[0], ny[0]);
 }
 
-void setPump(int nx1, int ny1, int nx2, int ny2, char mod, double pump_Force)
+void setPump(int nx1, int ny1, int nx2, int ny2, char mod, double pump_Force) //设置泵
 {
-	pump_Force /= 4.0;
 	if (abs(nx2 - nx1) > abs(ny2 - ny1))
 	{
 		if (nx2 < nx1)
@@ -231,22 +230,30 @@ void setPump(int nx1, int ny1, int nx2, int ny2, char mod, double pump_Force)
 		}
 		vec force = { double(ny2 - ny1), double(nx1 - nx2) };
 		force *= pump_Force / force.mold();
+		double k = (ny2 - ny1) / (nx2 - nx1), d;
+		bool *flag = new bool[N];
 		if (mod != 'F')
 			force = -force;
 		for (int nx = nx1, ny; nx <= nx2; ++nx)
 		{
-			ny = ny1 + (ny2 - ny1) *(nx - nx1) / (nx2 - nx1);
-			for (int i = 0; i < 3; ++i)
+			ny = int(ny1 + k*(nx - nx1));
+			for (int i = 0; i < 4; ++i)
 			{
 				for (int tnx = nx - i; tnx <= nx + i; ++tnx)
 				{
 					for (int tny = ny - i; tny <= ny + i; ++tny)
 					{
-						pump[periodicity(tnx, tny)] += force;
+						if (flag[periodicity(tnx, tny)]) 
+						{
+							d = abs(ny1 + k*(tnx - nx1) - tny) / sqrt(1 + k*k);
+							pump[periodicity(tnx, tny)] += force / (1 + d);
+							flag[periodicity(tnx, tny)] = false;
+						}
 					}
 				}
 			}
 		}
+		delete[] flag;
 	}
 	else if (ny1 != ny2)
 	{
@@ -259,28 +266,35 @@ void setPump(int nx1, int ny1, int nx2, int ny2, char mod, double pump_Force)
 		}
 		vec force = { double(ny2 - ny1), double(nx1 - nx2) };
 		force *= pump_Force / force.mold();
+		double k = (nx2 - nx1) / (ny2 - ny1), d;
+		bool *flag = new bool[N];
 		if (mod != 'F')
 			force = -force;
 		for (int ny = ny1, nx; ny <= ny2; ++ny)
 		{
-			nx = nx1 + (nx2 - nx1) *(ny - ny1) / (ny2 - ny1);
-			for (int i = 0; i < 3; ++i)
+			nx = int(nx1 + k*(ny - ny1));
+			for (int i = 0; i < 4; ++i)
 			{
 				for (int tnx = nx - i; tnx <= nx + i; ++tnx)
 				{
 					for (int tny = ny - i; tny <= ny + i; ++tny)
 					{
-						pump[periodicity(tnx, tny)] += force;
+						if (flag[periodicity(tnx, tny)])
+						{
+							d = abs(nx1 + k*(tny - ny1) - tnx) / sqrt(1 + k*k);
+							pump[periodicity(tnx, tny)] += force / (1 + d);
+							flag[periodicity(tnx, tny)] = false;
+						}
 					}
 				}
 			}
 		}
+		delete[] flag;
 	}
 }
 
-void setPump(int nx1, int ny1, int nx2, int ny2, vec force)
+void setPump(int nx1, int ny1, int nx2, int ny2, vec force) //设置泵
 {
-	force /= 4.0;
 	if (abs(nx2 - nx1) > abs(ny2 - ny1))
 	{
 		if (nx2 < nx1)
@@ -289,18 +303,28 @@ void setPump(int nx1, int ny1, int nx2, int ny2, vec force)
 			nx1 = nx2, ny1 = ny2;
 			nx2 = tnx, ny2 = tny;
 		}
+		double k = (ny2 - ny1) / (nx2 - nx1), d;
+		bool *flag = new bool[N];
 		for (int nx = nx1, ny; nx <= nx2; ++nx)
 		{
-			ny = ny1 + (ny2 - ny1) *(nx - nx1) / (nx2 - nx1);
-			for (int i = 0; i < 3; ++i)
+			ny = int(ny1 + k*(nx - nx1));
+			for (int i = 0; i < 4; ++i)
 			{
 				for (int tnx = nx - i; tnx <= nx + i; ++tnx)
 				{
 					for (int tny = ny - i; tny <= ny + i; ++tny)
-						pump[periodicity(tnx, tny)] += force;
+					{
+						if (flag[periodicity(tnx, tny)])
+						{
+							d = abs(ny1 + k*(tnx - nx1) - tny) / sqrt(1 + k*k);
+							pump[periodicity(tnx, tny)] += force / (1 + d);
+							flag[periodicity(tnx, tny)] = false;
+						}
+					}
 				}
 			}
 		}
+		delete[] flag;
 	}
 	else if (ny1 != ny2)
 	{
@@ -309,33 +333,46 @@ void setPump(int nx1, int ny1, int nx2, int ny2, vec force)
 			int tnx = nx1, tny = ny1;
 			nx1 = nx2, ny1 = ny2;
 			nx2 = tnx, ny2 = tny;
-		}
+		}								
+		double k = (nx2 - nx1) / (ny2 - ny1), d;
+		bool *flag = new bool[N];
 		for (int ny = ny1, nx; ny <= ny2; ++ny)
 		{
-			nx = nx1 + (nx2 - nx1) *(ny - ny1) / (ny2 - ny1);
-			for (int i = 0; i < 3; ++i)
+			nx = int(nx1 + k*(ny - ny1));
+			for (int i = 0; i < 4; ++i)
 			{
 				for (int tnx = nx - i; tnx <= nx + i; ++tnx)
 				{
 					for (int tny = ny - i; tny <= ny + i; ++tny)
-						pump[periodicity(tnx, tny)] += force;
+					{
+						if (flag[periodicity(tnx, tny)])
+						{
+							d = abs(nx1 + k*(tny - ny1) - tnx) / sqrt(1 + k*k);
+							pump[periodicity(tnx, tny)] += force / (1 + d);
+							flag[periodicity(tnx, tny)] = false;
+						}
+					}
 				}
 			}
 		}
+		delete[] flag;
 	}
 }
 
-void setGravity(vec &direction, double sgravity)
+void setGravity(vec &direction, double sgravity) //设置重力场
 {
-	g = (sgravity / direction.mold())*direction;
+	if (direction.mold2() > 0.0)
+		g = (sgravity / direction.mold())*direction;
+	else
+		g = vec(0.0, 0.0);
 }
 
-void setGravity(double x, double y, double sgravity)
+void setGravity(double x, double y, double sgravity) //设置重力场
 {
 	setGravity(vec(x, y), sgravity);
 }
 
-double viscosity(particle in1, particle in2)
+double viscosity(particle in1, particle in2) //人为粘性
 {
 	vec r = in1.r - in2.r;
 	vec v = in1.v - in2.v;
@@ -349,9 +386,9 @@ double viscosity(particle in1, particle in2)
 	}
 }
 
-double heatFactor(vector<particle> netin[], int nx, int ny, int np)
+double heatFactor(vector<particle> netin[], int nx, int ny, int np) //人为热流因子
 {
-	particle particle_i = netin[periodicity(nx, ny)][np], particle_j = {}; 
+	particle particle_i = netin[periodicity(nx, ny)][np], particle_j = {};
 	double delta_v = 0.0;
 	for (int tnx = nx - 1; tnx <= nx + 1; ++tnx)
 	{
@@ -359,16 +396,16 @@ double heatFactor(vector<particle> netin[], int nx, int ny, int np)
 		{
 			for (int j = 0; j < netin[periodicity(tnx, tny)].size(); ++j)
 			{
-				particle_j = netin[periodicity(tnx, tny)][j]; 
+				particle_j = netin[periodicity(tnx, tny)][j];
 				if (particle_j.density != 0.0)
-					delta_v += particle_j.v*gradW(particle_i.r - particle_j.r) / particle_j.density; 
+					delta_v += particle_j.v*gradW(particle_i.r - particle_j.r) / particle_j.density;
 			}
 		}
 	}
-	return g1*h*c0 + g2*h*h*(abs(delta_v) - delta_v); 
+	return g1*h*c0 + g2*h*h*(abs(delta_v) - delta_v);
 }
 
-double heat(vector<particle> netin[], int nx, int ny, int np)
+double heat(vector<particle> netin[], int nx, int ny, int np) //人为热流
 {
 	particle particle_i = netin[periodicity(nx, ny)][np], particle_j = {};
 	vec rij;
@@ -392,7 +429,7 @@ double heat(vector<particle> netin[], int nx, int ny, int np)
 	return 2.0 * m*heat;
 }
 
-double pressure(double u, double density, double density0) //压强函数
+double pressure(double u, double density, double density0) //压强
 {
 	if (density == 0.0 || density0 == 0.0)
 		return 0.0;
@@ -404,7 +441,7 @@ double pressure(double u, double density, double density0) //压强函数
 	}
 }
 
-void next(vector<particle> netin[], vector<particle> netout[], double &dt) //函数
+void next(vector<particle> netin[], vector<particle> netout[], double &dt)
 {
 	int net_i, net_i_size, net_j, net_j_size;
 	particle particlein_i = {}, particlein_j = {};
@@ -438,7 +475,7 @@ void next(vector<particle> netin[], vector<particle> netout[], double &dt) //函
 						}
 					}
 				}
-				density *= m, du_dt *= m / 2.0, a = -m*a + g + pump[net_i]; 
+				density *= m, du_dt *= m / 2.0, a = -m*a + g + pump[net_i];
 				if (density > netin[net_i][i].density)
 					du_dt += heat(netin, nx, ny, i);
 				netout[net_i][i].density = density;
@@ -446,7 +483,7 @@ void next(vector<particle> netin[], vector<particle> netout[], double &dt) //函
 				netout[net_i][i].pressure = pressure(netout[net_i][i].u, density, netin[net_i][i].density0);
 				netout[net_i][i].a = a;
 				netout[net_i][i].v = particlein_i.v + a*dt;
-				v_correction *= correction_factor*m;
+				v_correction *= correctionFactor*m;
 				netout[net_i][i].r = particlein_i.r + (2.0*particlein_i.v + a*dt + 2.0*v_correction) *(dt / 2.0);
 				periodicity(netout[net_i][i]);
 			}
@@ -484,8 +521,8 @@ void initialization(vector<particle> netin[]) //初始化
 		for (int ny = 1; ny <= Ny; ++ny)
 		{
 			netin[nx + ny*N_x].resize(N0);
-			for (double k = 0; k < N0; ++k)
-				netin[nx + ny*N_x][k] = { { (nx + rand() / (RAND_MAX + 1.0)) * 2.0 * h , (ny + rand() / (RAND_MAX + 1.0)) * 2.0 * h } ,{ 0.0,0.0 },{ 0.0,0.0 }, 0.0, 0.0, 0.0, 0.0 }; 
+			for (int i = 0; i < N0; ++i)
+				netin[nx + ny*N_x][i] = { { (nx + rand() / (RAND_MAX + 1.0)) * 2.0 * h , (ny + rand() / (RAND_MAX + 1.0)) * 2.0 * h } ,v0,{ 0.0,0.0 }, 0.0, 0.0, 0.0, 0.0 };
 		}
 	}
 	double density = 0.0;
